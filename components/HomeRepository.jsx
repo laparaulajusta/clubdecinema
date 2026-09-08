@@ -36,7 +36,6 @@ export default function HomeRepository({ movies = [], tags = [], historyRecords 
     });
   });
 
-  // Filtrar pel·lícules
   const filteredMovies = movies.filter(movie => {
     const matchSearch = movie.title.toLowerCase().includes(searchTerm.toLowerCase());
     const matchTag = filterTag ? (movie.tag?._id === filterTag || movie.tag === filterTag) : true;
