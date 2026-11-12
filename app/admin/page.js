@@ -1,17 +1,32 @@
 import { connectDB } from '@/lib/mongodb';
+import { MESOS, ANYS } from '@/lib/constants';
+import { getNumPelisVotacio, getMaxPropostesSetmana, setNumPelisVotacio, setMaxPropostesSetmana } from '@/lib/settings';
 import Movie from '@/models/Movie';
 import Tag from '@/models/Tag';
 import History from '@/models/History';
 import Setting from '@/models/Setting';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
 import AdminRepository from '@/components/AdminRepository';
 import LiveSearch from '@/components/LiveSearch';
 import Navbar from '@/components/Navbar';
 import VotingControls from '@/components/VotingControls';
 import TagManager from '@/components/TagManager';
+import ConfiguracioJoc from '@/components/ConfiguracioJoc';
 
 export const dynamic = 'force-dynamic';
+
+async function assignarGuanyadora() {
+  const active = await Movie.find({ en_votacio: true }).lean();
+  const maxVotes = Math.max(0, ...active.map(m => m.votes));
+
+  await Movie.updateMany({ en_votacio: true }, { $set: { guanyadora: false } });
+  if (maxVotes > 0) {
+    await Movie.findOneAndUpdate(
+      { en_votacio: true, votes: maxVotes },
+      { $set: { guanyadora: true } }
+    );
+  }
+}
 
 export default async function AdminPage() {
   await connectDB();
@@ -71,9 +86,30 @@ export default async function AdminPage() {
   const setting = await Setting.findOne({ key: 'voting_closed' });
   const votingClosed = setting ? setting.value : false;
 
-  const mesos = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
-  const anys = [2026, 2027, 2028, 2029, 2030];
-  const numPelisVotacio = 10;
+  const numPelisVotacio = await getNumPelisVotacio();
+  const maxPropostesSetmana = await getMaxPropostesSetmana();
+
+  async function desarConfiguracio(formData) {
+    'use server'
+    const numPelisActual = await getNumPelisVotacio();
+    const numPelis = formData.has('num_pelis_votacio') ? Number(formData.get('num_pelis_votacio')) : numPelisActual;
+    const maxPropostes = Number(formData.get('max_propostes_setmana'));
+
+    if (!Number.isInteger(numPelis) || numPelis < 1 || !Number.isInteger(maxPropostes) || maxPropostes < 1) {
+      return { success: false, message: 'Els valors han de ser nombres enters més grans que 0.' };
+    }
+
+    if (numPelis !== numPelisActual && (await Movie.countDocuments({ en_votacio: true })) > 0) {
+      return { success: false, message: 'No es pot canviar el nombre de pel·lícules per votació mentre hi hagi pel·lícules en votació.' };
+    }
+
+    await setNumPelisVotacio(numPelis);
+    await setMaxPropostesSetmana(maxPropostes);
+
+    revalidatePath('/admin');
+    revalidatePath('/');
+    return { success: true, message: 'Configuració desada.' };
+  }
 
   async function canviarTag(formData) {
     'use server'
@@ -94,13 +130,11 @@ export default async function AdminPage() {
 
     if (!movie.en_votacio) {
       const count = await Movie.countDocuments({ en_votacio: true });
-      if (count >= numPelisVotacio) return;
+      if (count >= (await getNumPelisVotacio())) return;
     }
 
     movie.en_votacio = !movie.en_votacio;
-    if (!movie.en_votacio) {
-      movie.votes = 0;
-    }
+    movie.votes = 0;
     await movie.save();
     revalidatePath('/admin');
     revalidatePath('/');
@@ -113,6 +147,57 @@ export default async function AdminPage() {
     await Movie.findByIdAndDelete(id);
     revalidatePath('/admin');
     revalidatePath('/');
+  }
+
+  async function editarPeli(formData) {
+    'use server'
+    const id = formData.get('id');
+    const title = String(formData.get('title') ?? '').trim();
+    const overview = String(formData.get('overview') ?? '').trim();
+
+    if (!title) {
+      return { success: false, error: 'El títol no pot quedar buit.' };
+    }
+
+    const filtre = { _id: id };
+    const canvis = { title, overview };
+    const editaVots = formData.has('votes');
+
+    if (editaVots) {
+      const votes = Number(formData.get('votes'));
+      if (!Number.isInteger(votes) || votes < 0) {
+        return { success: false, error: 'Els vots han de ser un nombre enter igual o més gran que 0.' };
+      }
+      
+      // Només es desen si la peli continua en votació i ningú ha votat mentre s'editava
+      filtre.en_votacio = true;
+      filtre.votes = Number(formData.get('votesOriginals'));
+      canvis.votes = votes;
+    }
+
+    await connectDB();
+    const updated = await Movie.findOneAndUpdate(filtre, canvis);
+
+    if (!updated) {
+      const actual = await Movie.findById(id).lean();
+      if (!actual) {
+        return { success: false, error: "No s'ha trobat la pel·lícula." };
+      }
+      revalidatePath('/admin');
+      if (!actual.en_votacio) {
+        return { success: false, error: "Aquesta pel·lícula ja no és en votació, així que no se n'han pogut desar els vots." };
+      }
+      return { success: false, error: `Els vots han canviat mentre editaves (ara en té ${actual.votes}). Tanca i torna a obrir l'edició.` };
+    }
+
+    if (editaVots) {
+      const setting = await Setting.findOne({ key: 'voting_closed' });
+      if (setting?.value) await assignarGuanyadora();
+    }
+
+    revalidatePath('/admin');
+    revalidatePath('/');
+    return { success: true };
   }
 
   async function afegirTag(formData) {
@@ -138,21 +223,11 @@ export default async function AdminPage() {
     'use server'    
     await connectDB();
 
-    const active = await Movie.find({ en_votacio: true }).lean();
-    if (active.length === 0) {
+    if ((await Movie.countDocuments({ en_votacio: true })) === 0) {
       return { success: false, message: 'No hi ha pel·lícules en votació per poder tancar-la.' };
     }
 
-    const maxVotes = Math.max(...active.map(m => m.votes));
-
-    await Movie.updateMany({ en_votacio: true }, { $set: { guanyadora: false } });
-    if (maxVotes > 0) {
-      await Movie.findOneAndUpdate(
-        { en_votacio: true, votes: maxVotes },
-        { $set: { guanyadora: true } }
-      );
-    }
-
+    await assignarGuanyadora();
     await Setting.findOneAndUpdate({ key: 'voting_closed' }, { value: true }, { upsert: true });
 
     revalidatePath('/admin');
@@ -178,12 +253,12 @@ export default async function AdminPage() {
     const any = formData.get('any');
     const roundName = `${mes} ${any}`;
 
-    const cStore = await cookies();
     await connectDB();
 
     const active = await Movie.find({ en_votacio: true }).lean();
-    if (active.length !== numPelisVotacio) {
-      return { success: false, message: `Cal tenir exactament ${numPelisVotacio} pel·lícules en votació per guardar l'històric.` };
+    const numPelis = await getNumPelisVotacio();
+    if (active.length !== numPelis) {
+      return { success: false, message: `Cal tenir exactament ${numPelis} pel·lícules en votació per guardar l'històric.` };
     }
 
     const existent = await History.findOne({ roundName });
@@ -212,7 +287,8 @@ export default async function AdminPage() {
     
     await Movie.updateMany({ en_votacio: true }, { $set: { en_votacio: false, votes: 0 } });
     await Setting.findOneAndUpdate({ key: 'voting_closed' }, { value: false }, { upsert: true });
-    cStore.delete('voted_movie_id');
+    // Ronda nova: invalida els vots desats a les cookies de tots els usuaris
+    await Setting.findOneAndUpdate({ key: 'voting_round' }, { value: Date.now().toString() }, { upsert: true });
 
     revalidatePath('/admin');
     revalidatePath('/');
@@ -260,6 +336,13 @@ export default async function AdminPage() {
           <p className="text-slate-400">Gestiona les pel·lícules, categories i votacions</p>
         </header>
 
+        <ConfiguracioJoc
+          numPelisVotacio={numPelisVotacio}
+          maxPropostesSetmana={maxPropostesSetmana}
+          pelisEnVotacio={activeMoviesCount}
+          desarConfiguracio={desarConfiguracio}
+        />
+
         <section id="admin-afegir" className="space-y-6 scroll-mt-24">
           <h2 className="text-2xl font-bold border-b border-slate-800 pb-3">
             🎞️ <span>Afegir pel·lícules i categories</span>
@@ -282,8 +365,8 @@ export default async function AdminPage() {
             activeMoviesCount={activeMoviesCount}
             numPelisVotacio={numPelisVotacio}
             votingClosed={votingClosed}
-            mesos={mesos}
-            anys={anys}
+            mesos={MESOS}
+            anys={ANYS}
             tancarRonda={tancarRonda}
             reobrirRonda={reobrirRonda}
             resetejarVotacio={resetejarVotacio}
@@ -296,7 +379,8 @@ export default async function AdminPage() {
             tags={tags} 
             activeMoviesCount={activeMoviesCount} 
             toggleVotacio={toggleVotacio} 
-            eliminarPeli={eliminarPeli} 
+            eliminarPeli={eliminarPeli}
+            editarPeli={editarPeli}
             canviarTag={canviarTag}
             historyRecords={historyWithDetails}
             numPelisVotacio={numPelisVotacio}

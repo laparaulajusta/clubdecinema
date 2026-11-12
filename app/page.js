@@ -1,14 +1,36 @@
 import { connectDB } from '@/lib/mongodb';
+import { getNumPelisVotacio, getMaxPropostesSetmana } from '@/lib/settings';
 import Movie from '@/models/Movie';
 import Tag from '@/models/Tag';
 import History from '@/models/History';
 import Setting from '@/models/Setting';
 import { revalidatePath } from 'next/cache';
 import { cookies } from 'next/headers';
+import mongoose from 'mongoose';
 import LiveSearch from '@/components/LiveSearch';
 import HomeRepository from '@/components/HomeRepository';
 import ActiveMoviesList from '@/components/ActiveMoviesList';
 import Navbar from '@/components/Navbar';
+
+const DURADA_COOKIE_VOT_SEGONS = 60 * 60 * 24 * 365;
+
+async function getRondaActual() {
+  const ronda = await Setting.findOne({ key: 'voting_round' }).lean();
+  return ronda ? String(ronda.value) : '';
+}
+
+// Format de la cookie: "<ronda>:<id de la peli>". Les cookies antigues només tenen l'id.
+function llegirCookieVot(valor) {
+  if (!valor) return null;
+  const separador = valor.lastIndexOf(':');
+  const ronda = separador === -1 ? '' : valor.slice(0, separador);
+  const movieId = valor.slice(separador + 1);
+  return mongoose.isValidObjectId(movieId) ? { ronda, movieId } : null;
+}
+
+function restarVot(movieId) {
+  return Movie.updateOne({ _id: movieId, votes: { $gt: 0 } }, { $inc: { votes: -1 } });
+}
 
 export default async function Home() {
   await connectDB();
@@ -20,9 +42,6 @@ export default async function Home() {
   // Comprovar si les votacions estan tancades per l'administrador
   const setting = await Setting.findOne({ key: 'voting_closed' });
   const votingClosed = setting ? setting.value : false;
-
-  const cStore = await cookies();
-  const votedMovieId = cStore.get('voted_movie_id')?.value || null;
 
   const rawActiveMovies = await Movie.find({ en_votacio: true }).lean();
   
@@ -37,7 +56,12 @@ export default async function Home() {
     return { ...m, _id: m._id.toString(), tag: resolvedTag };
   });
 
-  const isVotingReady = activeMovies.length === 10;
+  const cStore = await cookies();
+  const vot = llegirCookieVot(cStore.get('voted_movie_id')?.value);
+  const rondaActual = await getRondaActual();
+  const votedMovieId = vot && vot.ronda === rondaActual && activeMovies.some(m => m._id === vot.movieId) ? vot.movieId : null;
+
+  const isVotingReady = activeMovies.length === (await getNumPelisVotacio());
 
   const rawRepoMovies = await Movie.find().lean();
   const repoMovies = rawRepoMovies.map(m => {
@@ -90,41 +114,41 @@ export default async function Home() {
 
   async function votar(formData) {
     'use server'
+    await connectDB();
+
     // Si la votació està tancada, no permetre votar ni canviar vots
     const settingCheck = await Setting.findOne({ key: 'voting_closed' });
     if (settingCheck && settingCheck.value) return;
 
-    const cookieStore = await cookies();
-    await connectDB();
     const activeCheck = await Movie.countDocuments({ en_votacio: true });
-    if (activeCheck < 10) return; 
+    if (activeCheck < (await getNumPelisVotacio())) return;
 
     const newId = formData.get('id');
-    const oldVotedId = cookieStore.get('voted_movie_id')?.value;
+    if (!mongoose.isValidObjectId(newId) || !(await Movie.exists({ _id: newId, en_votacio: true }))) return;
 
-    if (oldVotedId) {
-      if (oldVotedId === newId) {
-        // Si torna a clicar la mateixa, es retira el vot (unvote)
-        await Movie.findByIdAndUpdate(newId, { $inc: { votes: -1 } });
-        cookieStore.delete('voted_movie_id');
-      } else {
-        // Si canvia de vot: resta a l'antiga i suma a la nova
-        await Movie.findByIdAndUpdate(oldVotedId, { $inc: { votes: -1 } });
-        await Movie.findByIdAndUpdate(newId, { $inc: { votes: 1 } });
-        cookieStore.set('voted_movie_id', newId, { maxAge: 60 * 60 * 24 * 30 });
-      }
+    // El vot de la cookie només compta si és d'aquesta ronda i la peli continua en votació
+    const cookieStore = await cookies();
+    const vot = llegirCookieVot(cookieStore.get('voted_movie_id')?.value);
+    const rondaActual = await getRondaActual();
+    const votVigent = vot && vot.ronda === rondaActual && await Movie.exists({ _id: vot.movieId, en_votacio: true });
+    const oldVotedId = votVigent ? vot.movieId : null;
+
+    if (oldVotedId === newId) {
+      // Si torna a clicar la mateixa, es retira el vot (unvote)
+      await restarVot(newId);
+      cookieStore.delete('voted_movie_id');
     } else {
-      // Primer vot
+      // Primer vot o canvi de vot: resta a l'antiga (si n'hi ha) i suma a la nova
+      if (oldVotedId) await restarVot(oldVotedId);
       await Movie.findByIdAndUpdate(newId, { $inc: { votes: 1 } });
-      cookieStore.set('voted_movie_id', newId, { maxAge: 60 * 60 * 24 * 30 });
+      cookieStore.set('voted_movie_id', `${rondaActual}:${newId}`, { maxAge: DURADA_COOKIE_VOT_SEGONS });
     }
-    
+
     revalidatePath('/');
   }
 
   async function afegirDesDeUsuari(formData) {
     'use server'
-    const LIMIT = 5;
     const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
     const cookieStore = await cookies();
@@ -141,11 +165,11 @@ export default async function Home() {
       }
     }
 
-    // Ens quedem només amb els de l'última setmana
     const recentTimestamps = timestamps.filter(t => now - t < WEEK_MS);
 
-    if (recentTimestamps.length >= LIMIT) {
-      return { success: false, error: `Has arribat al límit de ${LIMIT} pel·lícules afegides aquesta setmana. Torna-ho a provar més endavant.` };
+    const maxPropostes = await getMaxPropostesSetmana();
+    if (recentTimestamps.length >= maxPropostes) {
+      return { success: false, error: `Has arribat al límit de ${maxPropostes} pel·lícules afegides aquesta setmana. Torna-ho a provar més endavant.` };
     }
 
     const tmdbId = Number(formData.get('tmdbId'));
@@ -172,9 +196,8 @@ export default async function Home() {
       votes: 0
     });
 
-    // Registrem aquest afegit i guardem la cookie actualitzada
     recentTimestamps.push(now);
-    cookieStore.set('added_movies_log', JSON.stringify(recentTimestamps), { maxAge: 60 * 60 * 24 * 30 });
+    cookieStore.set('added_movies_log', JSON.stringify(recentTimestamps), { maxAge: WEEK_MS / 1000 });
     
     revalidatePath('/');
     return { success: true };

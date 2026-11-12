@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { DURADA_MISSATGES_MS } from '@/lib/constants';
 
 export default function VotingControls({
   activeMoviesCount,
@@ -19,7 +20,7 @@ export default function VotingControls({
     if (statusMsg.text) {
       const timer = setTimeout(() => {
         setStatusMsg({ text: '', type: '' });
-      }, 4000);
+      }, DURADA_MISSATGES_MS);
       return () => clearTimeout(timer);
     }
   }, [statusMsg]);

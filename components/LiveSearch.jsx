@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import { DURADA_MISSATGES_MS, ESPERA_CERCA_MS, IDIOMA_TMDB } from '@/lib/constants';
 
 export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [] }) {
   const [query, setQuery] = useState('');
@@ -13,7 +14,7 @@ export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [] 
     if (statusMsg.text) {
       const timer = setTimeout(() => {
         setStatusMsg({ text: '', type: '' });
-      }, 4000);
+      }, DURADA_MISSATGES_MS);
       return () => clearTimeout(timer);
     }
   }, [statusMsg]);
@@ -32,8 +33,8 @@ export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [] 
         if (response && response.ok) {
           data = await response.json();
         } else {
-          const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY || 'fb7c43df52fbb6b42b10cae7fc6d6c34'; 
-          const tmdbRes = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=ca-ES`);
+          const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY; 
+          const tmdbRes = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=${IDIOMA_TMDB}`);
           data = await tmdbRes.json();
         }
         setResults(data.results || data || []);
@@ -44,7 +45,7 @@ export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [] 
       }
     };
 
-    const timeoutId = setTimeout(fetchMovies, 500); // 500ms d'espera per no saturar TMDB
+    const timeoutId = setTimeout(fetchMovies, ESPERA_CERCA_MS); // espera per no saturar TMDB
     return () => clearTimeout(timeoutId);
   }, [query]);
 

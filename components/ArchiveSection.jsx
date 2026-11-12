@@ -1,12 +1,10 @@
 'use client';
 import { useState } from 'react';
+import { MESOS, ANYS } from '@/lib/constants';
 
-const MONTHS = ['Gener', 'Febrer', 'Març', 'Abril', 'Maig', 'Juny', 'Juliol', 'Agost', 'Setembre', 'Octubre', 'Novembre', 'Desembre'];
-const YEARS = [2026, 2027, 2028, 2029, 2030];
-
-export default function ArchiveSection({ onArchive }) {
-  const [selectedMonth, setSelectedMonth] = useState(MONTHS[0]);
-  const [selectedYear, setSelectedYear] = useState(YEARS[0]);
+export default function ArchiveSection({ onArchive, numPelisVotacio }) {
+  const [selectedMonth, setSelectedMonth] = useState(MESOS[0]);
+  const [selectedYear, setSelectedYear] = useState(ANYS[0]);
   const [message, setMessage] = useState(null);
   const [loading, setLoading] = useState(false);
 
@@ -32,21 +30,21 @@ export default function ArchiveSection({ onArchive }) {
   return (
     <section className="bg-amber-950/30 border border-amber-600/30 p-6 rounded-2xl shadow-xl space-y-4">
       <h2 className="text-xl font-bold text-amber-300">Tancar Mes Actual i Arxivar a l'Històric</h2>
-      <p className="text-xs text-amber-200/70">Selecciona el mes i l'any per arxivar les 10 pel·lícules en votació de manera robusta sense duplicats.</p>
+      <p className="text-xs text-amber-200/70">Selecciona el mes i l'any per arxivar les {numPelisVotacio} pel·lícules en votació de manera robusta sense duplicats.</p>
       <form onSubmit={handleSubmit} className="flex flex-wrap gap-3 items-center">
         <select 
           value={selectedMonth} 
           onChange={(e) => setSelectedMonth(e.target.value)} 
           className="bg-slate-950 border border-amber-600/40 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
         >
-          {MONTHS.map(m => <option key={m} value={m}>{m}</option>)}
+          {MESOS.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
         <select 
           value={selectedYear} 
           onChange={(e) => setSelectedYear(Number(e.target.value))} 
           className="bg-slate-950 border border-amber-600/40 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none"
         >
-          {YEARS.map(y => <option key={y} value={y}>{y}</option>)}
+          {ANYS.map(y => <option key={y} value={y}>{y}</option>)}
         </select>
         <button disabled={loading} className="bg-amber-600 hover:bg-amber-500 text-sm font-semibold px-5 py-2.5 rounded-xl transition text-slate-950 disabled:opacity-50">
           {loading ? 'Arxivant...' : 'Tancar i Arxivar'}

@@ -1,18 +1,34 @@
 'use client';
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useFormStatus } from "react-dom";
+import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
+
+function AfegirCategoriaButton() {
+  const { pending } = useFormStatus();
+
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className={`px-4 py-2 rounded-xl text-sm font-semibold transition flex items-center gap-1.5 ${
+        pending
+          ? "bg-emerald-700 text-emerald-200 cursor-wait"
+          : "bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer"
+      }`}
+    >
+      {pending && <span className="w-3 h-3 border-2 border-emerald-200 border-t-transparent rounded-full animate-spin" />}
+      {pending ? "Afegint..." : "Afegir"}
+    </button>
+  );
+}
 
 export default function TagManager({ tags, afegirTag, eliminarTag }) {
   const [tagToDelete, setTagToDelete] = useState(null);
-  const [isPending, startTransition] = useTransition();
 
-  const confirmDelete = () => {
-    if (!tagToDelete) return;
+  const eliminarCategoria = () => {
     const formData = new FormData();
     formData.append("id", tagToDelete._id);
-    startTransition(() => {
-      eliminarTag(formData);
-    });
-    setTagToDelete(null);
+    return eliminarTag(formData);
   };
 
   return (
@@ -21,19 +37,14 @@ export default function TagManager({ tags, afegirTag, eliminarTag }) {
         <h4 className="font-bold text-sm text-slate-200 mb-4">
           Afegir categories
         </h4>
-        <form action={afegirTag} className="flex gap-2 mb-6">
+        <form action={afegirTag} className="flex gap-4 mb-6">
           <input
             type="text"
             name="name"
             placeholder="Nova categoria (ex: Acció...)"
             className="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 flex-1 shadow-inner"
           />
-          <button
-            type="submit"
-            className="bg-emerald-600 hover:bg-emerald-500 text-white px-4 py-2 rounded-xl text-sm font-semibold transition cursor-pointer"
-          >
-            Afegir
-          </button>
+          <AfegirCategoriaButton />
         </form>
 
         <div>
@@ -67,32 +78,14 @@ export default function TagManager({ tags, afegirTag, eliminarTag }) {
         </div>
       </div>
 
-      {/* Modal alerta eliminar */}
       {tagToDelete && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
-          <div className="bg-slate-800 border border-slate-600 rounded-xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="text-slate-200 font-semibold text-base mb-2">
-              Eliminar categoria
-            </h3>
-            <p className="text-slate-400 text-sm mb-5">Segur que vols eliminar la categoria <span className="text-slate-200 font-medium">{tagToDelete.name}</span>? Aquesta acció no es pot desfer i les pel·lícules que la tenien assignada es quedaran sense categoria.</p>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setTagToDelete(null)}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-300 border border-slate-600 hover:bg-slate-700 transition cursor-pointer"
-              >
-                Cancel·lar
-              </button>
-              <button
-                type="button"
-                onClick={confirmDelete}
-                className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 transition cursor-pointer"
-              >
-                Eliminar
-              </button>
-            </div>
-          </div>
-        </div>
+        <ConfirmDeleteModal
+          title="Eliminar categoria"
+          onConfirm={eliminarCategoria}
+          onClose={() => setTagToDelete(null)}
+        >
+          Segur que vols eliminar la categoria <span className="text-slate-200 font-medium">{tagToDelete.name}</span>? Aquesta acció no es pot desfer i les pel·lícules que la tenien assignada es quedaran sense categoria.
+        </ConfirmDeleteModal>
       )}
     </>
   );
