@@ -1,6 +1,7 @@
 'use client';
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useFormStatus } from 'react-dom';
+import { obrirModalLogin } from '@/lib/events';
 
 function Synopsis({ movieId, overview, expandedIds, toggleExpanded, clampClass, textClass }) {
   const ref = useRef(null);
@@ -46,7 +47,7 @@ function Synopsis({ movieId, overview, expandedIds, toggleExpanded, clampClass, 
   );
 }
 
-function VoteButton({ isMyVote, votedMovieId, compact }) {
+function VoteButton({ isMyVote, votedMovieId, compact, requereixLogin }) {
   const { pending } = useFormStatus();
 
   const text = isMyVote ? 'Retirar vot' : votedMovieId ? 'Canviar vot' : 'Votar';
@@ -54,7 +55,8 @@ function VoteButton({ isMyVote, votedMovieId, compact }) {
 
   return (
     <button
-      type="submit"
+      type={requereixLogin ? 'button' : 'submit'}
+      onClick={requereixLogin ? () => obrirModalLogin("Per votar has d'iniciar sessió o registrar-te.") : undefined}
       disabled={pending}
       className={`w-full text-white font-bold transition shadow-lg flex items-center justify-center gap-2 ${
         compact ? 'text-xs py-1.5 rounded-lg' : 'py-3 rounded-xl'
@@ -74,7 +76,7 @@ function VoteButton({ isMyVote, votedMovieId, compact }) {
   );
 }
 
-export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMovieId, votar, votingClosed = false }) {
+export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMovieId, votar, votingClosed = false, requereixLogin = false }) {
   const [viewMode, setViewMode] = useState('detailed'); // 'detailed' o 'compact'
   const [expandedIds, setExpandedIds] = useState({});
   
@@ -232,7 +234,7 @@ export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMov
                     <div className={`mt-auto pt-2 ${isMyVote ? 'border-emerald-500/30 bg-emerald-900/10' : 'border-slate-700/50 bg-slate-800/80'}`}>
                       <form action={votar}>
                         <input type="hidden" name="id" value={movie._id} />
-                        <VoteButton isMyVote={isMyVote} votedMovieId={votedMovieId} compact />
+                        <VoteButton isMyVote={isMyVote} votedMovieId={votedMovieId} requereixLogin={requereixLogin} compact />
                       </form>
                     </div>
                   )}
@@ -308,7 +310,7 @@ export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMov
                   <div className={`p-5 border-t ${isMyVote ? 'bg-emerald-900/10 border-emerald-500/30' : 'bg-slate-800/80 border-slate-700'}`}>
                     <form action={votar}>
                       <input type="hidden" name="id" value={movie._id} />                      
-                      <VoteButton isMyVote={isMyVote} votedMovieId={votedMovieId} />
+                      <VoteButton isMyVote={isMyVote} votedMovieId={votedMovieId} requereixLogin={requereixLogin} />
                     </form>
                   </div>
                 )}

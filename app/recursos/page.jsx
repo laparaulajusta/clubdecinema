@@ -1,9 +1,12 @@
 import Navbar from '@/components/Navbar'; // Ajusta la ruta del Navbar si cal
+import { getUsuariActual } from '@/lib/auth';
 
-export default function RecursosPage() {
+export default async function RecursosPage() {
+  const usuari = await getUsuariActual();
+
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <Navbar page={"recurs"} />
+      <Navbar page={"recurs"} usuari={usuari} />
 
       <div className="max-w-7xl mx-auto p-6 md:p-12 space-y-12">
         {/* Capçalera */}

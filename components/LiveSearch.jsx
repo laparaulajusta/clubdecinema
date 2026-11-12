@@ -1,8 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { DURADA_MISSATGES_MS, ESPERA_CERCA_MS, IDIOMA_TMDB } from '@/lib/constants';
+import { obrirModalLogin } from '@/lib/events';
 
-export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [] }) {
+export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [], requereixLogin = false }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -48,6 +49,12 @@ export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [] 
     const timeoutId = setTimeout(fetchMovies, ESPERA_CERCA_MS); // espera per no saturar TMDB
     return () => clearTimeout(timeoutId);
   }, [query]);
+
+  // Sense sessió no s'arriba a enviar el formulari (ni a validar la categoria): s'obre el login
+  const demanarLogin = (e) => {
+    e.preventDefault();
+    obrirModalLogin("Per proposar pel·lícules has d'iniciar sessió o registrar-te.");
+  };
 
   // 2. Afegir sense tancar els resultats
   const handleAdd = async (e, movie) => {
@@ -156,8 +163,9 @@ export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [] 
                     )}
                     
                     {/* Botó que es queda deshabilitat visualment amb text diferent */}
-                    <button 
-                      type="submit" 
+                    <button
+                      type="submit"
+                      onClick={requereixLogin ? demanarLogin : undefined}
                       disabled={alreadyExists || addingId === movie.id}
                       className={`py-1.5 rounded-lg text-xs font-bold transition flex-1 flex items-center justify-center gap-1.5 ${
                         alreadyExists 
@@ -170,7 +178,7 @@ export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [] 
                       {addingId === movie.id && (
                         <span className="w-3 h-3 border-2 border-emerald-200 border-t-transparent rounded-full animate-spin" />
                       )}
-                      {alreadyExists ? 'Ja afegida' : addingId === movie.id ? 'Afegint...' : 'Afegir'}
+                      {alreadyExists ? 'Ja afegida' : addingId === movie.id ? 'Afegint...' : '➕ Afegir'}
                     </button>
                   </form>
                 </div>

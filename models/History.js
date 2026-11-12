@@ -6,6 +6,7 @@ if (mongoose.models.History) {
 
 const HistorySchema = new mongoose.Schema({
   roundName: { type: String, required: true },
+  round: { type: String }, // valor de 'voting_round' de la ronda arxivada, per enllaçar-hi els Vote
   movies: [{
     tmdbId: { type: Number, required: true },
     votes: { type: Number, default: 0 },

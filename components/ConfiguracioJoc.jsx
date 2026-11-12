@@ -81,7 +81,7 @@ export default function ConfiguracioJoc({ numPelisVotacio, maxPropostesSetmana, 
           }`}
         >
           {isSaving && <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
-          {isSaving ? 'Desant...' : 'Desar'}
+          {isSaving ? 'Desant...' : '💾 Desar'}
         </button>
       </div>
 

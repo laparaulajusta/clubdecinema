@@ -9,8 +9,9 @@ export default function ConfirmDeleteModal({ title, children, onConfirm, onClose
     setError('');
     startDeleting(async () => {
       try {
-        await onConfirm();
-        onClose();
+        const res = await onConfirm();
+        if (res?.error) setError(res.error);
+        else onClose();
       } catch {
         setError("No s'ha pogut eliminar. Torna-ho a provar.");
       }

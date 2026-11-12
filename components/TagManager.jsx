@@ -17,7 +17,7 @@ function AfegirCategoriaButton() {
       }`}
     >
       {pending && <span className="w-3 h-3 border-2 border-emerald-200 border-t-transparent rounded-full animate-spin" />}
-      {pending ? "Afegint..." : "Afegir"}
+      {pending ? "Afegint..." : "➕ Afegir"}
     </button>
   );
 }

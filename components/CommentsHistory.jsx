@@ -1,0 +1,251 @@
+'use client';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import CommentThread from '@/components/CommentThread';
+import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import WinnerSelect from '@/components/WinnerSelect';
+import { eliminarComentari } from '@/app/actions/comments';
+import { escoltarComentariPublicat } from '@/lib/events';
+import { COMENTARIS_PER_TANDA } from '@/lib/constants';
+
+const SENSE_PELI = 'sense-peli';
+const ESPERA_TANDA_MS = 400;
+const DURADA_DESTACAT_MS = 2500;
+
+const clauPeli = (fil) => fil.movie?._id ?? SENSE_PELI;
+const comptarComentaris = (fils) => fils.reduce((total, fil) => total + 1 + fil.respostes.length, 0);
+
+// Segueix l'ordre de les guanyadores (la més recent primer); dins de cada grup, els fils ja arriben del més nou al més antic
+function agruparPerPeli(fils, guanyadores) {
+  const grups = new Map(guanyadores.map(g => [g.movieId, { ...g, fils: [] }]));
+  fils.forEach(fil => {
+    const clau = clauPeli(fil);
+    if (!grups.has(clau)) {
+      grups.set(clau, {
+        movieId: clau,
+        title: fil.movie?.title ?? 'Pel·lícula eliminada',
+        poster: fil.movie?.poster ?? null,
+        roundName: null,
+        fils: [],
+      });
+    }
+    grups.get(clau).fils.push(fil);
+  });
+  return [...grups.values()].filter(g => g.fils.length > 0);
+}
+
+function textEliminar(comentari) {
+  const respostes = comentari.respostes?.length ?? 0;
+  const ambRespostes = respostes === 0 ? '' : respostes === 1 ? ' i la seva resposta' : ` i les seves ${respostes} respostes`;
+  return `Segur que vols eliminar aquest comentari${ambRespostes}? Aquesta acció no es pot desfer.`;
+}
+
+export default function CommentsHistory({ fils = [], guanyadores = [], usuari = null, modeAdmin = false }) {
+  const [filtrePeli, setFiltrePeli] = useState('');
+  const [cerca, setCerca] = useState('');
+  const [visibles, setVisibles] = useState(COMENTARIS_PER_TANDA);
+  const [perMostrar, setPerMostrar] = useState(null);
+  const [destacat, setDestacat] = useState(null);
+  const [comentariAEliminar, setComentariAEliminar] = useState(null);
+  const sentinellaRef = useRef(null);
+
+  const totsElsGrups = useMemo(() => agruparPerPeli(fils, guanyadores), [fils, guanyadores]);
+  const opcionsPelis = totsElsGrups.map(g => ({
+    movieId: g.movieId,
+    title: g.title,
+    poster: g.poster,
+    roundName: g.roundName,
+    total: comptarComentaris(g.fils),
+  }));
+  // Si s'eliminen tots els comentaris de la peli filtrada, es torna a "totes"
+  const peliFiltrada = totsElsGrups.some(g => g.movieId === filtrePeli) ? filtrePeli : '';
+
+  const grups = useMemo(() => {
+    const text = cerca.trim().toLowerCase();
+    const filtrats = fils.filter(fil =>
+      (!peliFiltrada || clauPeli(fil) === peliFiltrada) &&
+      (!text || [fil, ...fil.respostes].some(c => c.text.toLowerCase().includes(text)))
+    );
+    return agruparPerPeli(filtrats, guanyadores);
+  }, [fils, guanyadores, peliFiltrada, cerca]);
+
+  const ordre = useMemo(() => grups.flatMap(g => g.fils.map(f => f._id)), [grups]);
+  const amagats = ordre.length - visibles;
+
+  // Mentre la sentinella és a la pantalla, es van desplegant tandes noves
+  useEffect(() => {
+    const sentinella = sentinellaRef.current;
+    if (amagats <= 0 || !sentinella) return;
+    let timer;
+    const observer = new IntersectionObserver(([entrada]) => {
+      clearTimeout(timer);
+      if (entrada.isIntersecting) {
+        timer = setTimeout(() => setVisibles(v => v + COMENTARIS_PER_TANDA), ESPERA_TANDA_MS);
+      }
+    });
+    observer.observe(sentinella);
+    return () => {
+      observer.disconnect();
+      clearTimeout(timer);
+    };
+  }, [amagats]);
+
+  useEffect(() => escoltarComentariPublicat((id) => {
+    setFiltrePeli('');
+    setCerca('');
+    setPerMostrar(id);
+  }), []);
+
+  // El comentari nou arriba amb la pàgina actualitzada: es desplega fins a ell i s'hi fa scroll
+  useEffect(() => {
+    if (!perMostrar) return;
+    const index = ordre.indexOf(perMostrar);
+    if (index === -1) return;
+    if (index >= visibles) {
+      setVisibles(index + 1);
+      return;
+    }
+    document.getElementById(`comentari-${perMostrar}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setDestacat(perMostrar);
+    setPerMostrar(null);
+  }, [perMostrar, ordre, visibles]);
+
+  useEffect(() => {
+    if (!destacat) return;
+    const timer = setTimeout(() => setDestacat(null), DURADA_DESTACAT_MS);
+    return () => clearTimeout(timer);
+  }, [destacat]);
+
+  const canviarFiltrePeli = (valor) => {
+    setFiltrePeli(valor);
+    setVisibles(COMENTARIS_PER_TANDA);
+  };
+
+  const canviarCerca = (valor) => {
+    setCerca(valor);
+    setVisibles(COMENTARIS_PER_TANDA);
+  };
+
+  let restants = visibles;
+  const grupsVisibles = [];
+  for (const grup of grups) {
+    if (restants <= 0) break;
+    const filsVisibles = grup.fils.slice(0, restants);
+    restants -= filsVisibles.length;
+    grupsVisibles.push({ ...grup, filsVisibles });
+  }
+
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold border-b border-slate-800 pb-3">
+        💬 <span>Crítica</span>
+      </h2>
+
+      {fils.length === 0 ? (
+        <p className="text-slate-500 text-sm">Encara no hi ha cap comentari.</p>
+      ) : (
+        <>
+          <div className="sticky z-40 top-[var(--navbar-height)] flex flex-col sm:flex-row sm:items-center gap-2 bg-slate-800/90 backdrop-blur-md p-4 border border-slate-700 rounded-b-xl shadow-lg shadow-black/60">
+            <div className="w-full">
+              <WinnerSelect
+                opcions={opcionsPelis}
+                value={peliFiltrada}
+                onChange={canviarFiltrePeli}
+                opcioTotes={{ title: 'Totes les pel·lícules', total: comptarComentaris(fils) }}
+              />
+            </div>
+            {modeAdmin && (
+              <div className="relative w-full sm:w-72">
+                <input
+                  type="text"
+                  value={cerca}
+                  onChange={(e) => canviarCerca(e.target.value)}
+                  placeholder="Cercar pel text del comentari..."
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-3 pr-8 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 shadow-inner"
+                />
+                {cerca && (
+                  <button
+                    type="button"
+                    onClick={() => canviarCerca('')}
+                    aria-label="Netejar la cerca"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer transition text-xs"
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {grups.length === 0 ? (
+            <p className="text-slate-500 text-sm">Cap comentari coincideix amb la cerca.</p>
+          ) : (
+            <div className="space-y-4">
+              {grupsVisibles.map(grup => (
+                <div key={grup.movieId} className="bg-slate-800/40 border border-slate-700/60 rounded-2xl overflow-hidden shadow-sm">
+                  <div className="flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700/60">
+                    {grup.poster ? (
+                      <img src={`https://image.tmdb.org/t/p/w92${grup.poster}`} alt={grup.title} className="w-10 h-14 object-cover rounded shadow flex-shrink-0" />
+                    ) : (
+                      <div className="w-10 h-14 bg-slate-700 rounded flex-shrink-0" />
+                    )}
+                    <div className="min-w-0 flex-1">
+                      {grup.roundName && (
+                        <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-medium uppercase tracking-wide">
+                          {grup.roundName}
+                        </span>
+                      )}
+                      <h3 className="font-bold text-sm sm:text-base text-slate-100 truncate mt-1">
+                        {grup.roundName && '🏆 '}{grup.title}
+                      </h3>
+                    </div>
+                    <span className="text-xs text-slate-400 flex-shrink-0" title="Comentaris i respostes">
+                      💬 {comptarComentaris(grup.fils)}
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-slate-700/40">
+                    {grup.filsVisibles.map(fil => (
+                      <CommentThread
+                        key={fil._id}
+                        fil={fil}
+                        usuari={usuari}
+                        modeAdmin={modeAdmin}
+                        destacat={destacat}
+                        cerca={cerca}
+                        onEliminar={setComentariAEliminar}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {amagats > 0 && (
+                <button
+                  ref={sentinellaRef}
+                  type="button"
+                  onClick={() => setVisibles(v => v + COMENTARIS_PER_TANDA)}
+                  className="w-full flex flex-col items-center gap-1 py-4 text-slate-400 hover:text-indigo-300 transition cursor-pointer"
+                >
+                  <span className="text-lg animate-bounce">▼</span>
+                  <span className="text-xs">
+                    {amagats === 1 ? 'Queda 1 comentari' : `Queden ${amagats} comentaris`} · baixa o clica per veure'n més
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {comentariAEliminar && (
+        <ConfirmDeleteModal
+          title="Eliminar comentari"
+          onConfirm={() => eliminarComentari(comentariAEliminar._id)}
+          onClose={() => setComentariAEliminar(null)}
+        >
+          {textEliminar(comentariAEliminar)}
+        </ConfirmDeleteModal>
+      )}
+    </div>
+  );
+}

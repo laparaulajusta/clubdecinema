@@ -53,7 +53,7 @@ export default function VotingControls({
           <div>
             <h2 className="text-xl font-bold text-slate-100">Tancament i reseteig</h2>
             <p className="text-xs text-slate-400 mt-1">Pas 1: Tanca la votació i assigna pel·lícula guanyadora (amb opció de reobrir).</p>
-            <p className="text-xs text-slate-400 mt-1">Pas 2: Reseteja els vots, buida pel·lícules de la votació i neteja cookies per al mes següent.</p>
+            <p className="text-xs text-slate-400 mt-1">Pas 2: Guarda l'històric, reseteja els vots i buida les pel·lícules de la votació per al mes següent.</p>
           </div>
           <span className={`text-xs px-3 py-1.5 rounded-full font-semibold ${activeMoviesCount === numPelisVotacio ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'}`}>
             {activeMoviesCount} / {numPelisVotacio} en votació
@@ -74,7 +74,7 @@ export default function VotingControls({
                 onClick={() => handleAction(tancarRonda)}
                 className={`w-full px-4 py-2 rounded-lg text-xs font-semibold transition shadow-md ${activeMoviesCount === numPelisVotacio && !votingClosed && !loading ? 'bg-indigo-600 hover:bg-indigo-500 text-white cursor-pointer' : 'bg-slate-700 text-slate-500 opacity-50 cursor-not-allowed'}`}
               >
-                Tancar votació del mes 🏆
+                🏆 Tancar votació del mes
               </button>
 
               <button 
@@ -88,7 +88,7 @@ export default function VotingControls({
                 }`}
                 title="Tirar enrere / Reobrir"
               >
-                Reobrir 🔄
+                🔄 Reobrir
               </button>
             </div>
           </div>
@@ -119,7 +119,7 @@ export default function VotingControls({
                 disabled={activeMoviesCount !== numPelisVotacio || loading}
                 className={`w-full text-white px-4 py-2 rounded-lg text-xs font-semibold transition shadow-md ${activeMoviesCount === numPelisVotacio && !loading ? 'bg-rose-600 hover:bg-rose-500 text-white cursor-pointer' : 'bg-slate-700 text-slate-500 opacity-50 cursor-not-allowed'}`}
               >
-                Guardar històric del mes i resetejar 🧹
+                🧹 Guardar històric del mes i resetejar
               </button>
             </form>
           </div>

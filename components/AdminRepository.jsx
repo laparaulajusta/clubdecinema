@@ -477,6 +477,11 @@ export default function AdminRepository({ movies, tags, activeMoviesCount, toggl
                       </div>
 
                       <div className="flex flex-col gap-2 pt-2 border-t border-slate-700/50">
+                        {movie.addedBy && (
+                          <p className="-mb-1 text-[10px] text-slate-500 truncate" title={`@${movie.addedBy.username}`}>
+                            Afegida per {movie.addedBy.name}
+                          </p>
+                        )}
                         <form action={canviarTag} className="flex gap-2 items-center">
                           <input type="hidden" name="id" value={movie._id} />
                           <CategoriaSelect tags={tags} defaultValue={movie.tag?._id || ''} />

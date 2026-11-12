@@ -1,21 +1,12 @@
 import { NextResponse } from 'next/server';
+import { COOKIE_SESSIO } from '@/lib/constants';
 
+// Només comprova que hi hagi sessió; que l'usuari sigui admin ho validen la pàgina i cada acció
 export function proxy(req) {
-  const basicAuth = req.headers.get('authorization');
-
-  if (basicAuth) {
-    const authValue = basicAuth.split(' ')[1];
-    const [user, pwd] = atob(authValue).split(':');
-
-    if (user === process.env.ADMIN_USER && pwd === process.env.ADMIN_PASS) {
-      return NextResponse.next();
-    }
+  if (!req.cookies.has(COOKIE_SESSIO)) {
+    return NextResponse.redirect(new URL('/', req.url));
   }
-
-  return new NextResponse('Accés denegat', {
-    status: 401,
-    headers: { 'WWW-Authenticate': 'Basic realm="Panell d\'Administració"' },
-  });
+  return NextResponse.next();
 }
 
 export const config = {

@@ -1,7 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
+import UserMenu from '@/components/UserMenu';
 
-export default function Navbar({ page }) {
+export default function Navbar({ page, usuari = null }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const isAdmin = page === "admin";
@@ -9,9 +10,9 @@ export default function Navbar({ page }) {
 
   useEffect(() => {
     const sections = isAdmin
-      ? ['admin-afegir', 'admin-active', 'admin-repo', 'admin-history']
+      ? ['admin-afegir', 'admin-active', 'admin-repo', 'admin-usuaris', 'admin-history', 'admin-comentaris']
       : !isRecurs
-        ? ['search-section', 'active-section', 'repo-section', 'history-section']
+        ? ['search-section', 'active-section', 'repo-section', 'history-section', 'comments-section']
         : ['pelicules', 'subtitols', 'informacio', 'llistes'];
 
     const handleScroll = () => {
@@ -70,11 +71,10 @@ export default function Navbar({ page }) {
           <a href="/" className="text-xl font-black bg-gradient-to-r from-indigo-400 to-violet-400 bg-clip-text text-transparent cursor-pointer">
             🎬 Club de Cinema
           </a>
-          {!isAdmin && (
-            <>
-              <a href="/admin" className="ml-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer">⚙️</a>
-            </>
+          {usuari?.isAdmin && (
+            <a href="/admin" title="Panell d'administració" className="ml-2 bg-slate-800 hover:bg-slate-700 text-slate-200 px-2.5 sm:px-4 py-1.5 rounded-lg border border-slate-700 transition cursor-pointer">⚙️</a>
           )}
+          <UserMenu usuari={usuari} />
         </div>
 
         {/* --- ESCRIPTORI --- */}
@@ -84,7 +84,9 @@ export default function Navbar({ page }) {
               <button onClick={() => scrollTo('admin-afegir')} className={getDesktopClass('admin-afegir')}>Afegir</button>
               <button onClick={() => scrollTo('admin-active')} className={getDesktopClass('admin-active')}>Votació</button>
               <button onClick={() => scrollTo('admin-repo')} className={getDesktopClass('admin-repo')}>Gestió</button>
+              <button onClick={() => scrollTo('admin-usuaris')} className={getDesktopClass('admin-usuaris')}>Usuaris</button>
               <button onClick={() => scrollTo('admin-history')} className={getDesktopClass('admin-history')}>Històric</button>
+              <button onClick={() => scrollTo('admin-comentaris')} className={getDesktopClass('admin-comentaris')}>Crítica</button>
             </>
           ) : isRecurs ? (
             <>
@@ -98,10 +100,11 @@ export default function Navbar({ page }) {
               <button onClick={() => scrollTo('search-section')} className={getDesktopClass('search-section')}>Proposar</button>
               <button onClick={() => scrollTo('active-section')} className={getDesktopClass('active-section')}>Votació</button>
               <button onClick={() => scrollTo('repo-section')} className={getDesktopClass('repo-section')}>Repositori</button>
-              <button onClick={() => scrollTo('history-section')} className={getDesktopClass('history-section')}>Històric</button>                    
+              <button onClick={() => scrollTo('history-section')} className={getDesktopClass('history-section')}>Històric</button>
+              <button onClick={() => scrollTo('comments-section')} className={getDesktopClass('comments-section')}>Crítica</button>
             </>
           )}
-          
+
           <div className="h-5 w-[1px] bg-slate-700/60 mx-2"></div>
 
           {/* Botons Fixos / Recursos */}
@@ -128,7 +131,9 @@ export default function Navbar({ page }) {
               <button onClick={() => scrollTo('admin-afegir')} className={getDesktopClass('admin-afegir')}>Afegir</button>
               <button onClick={() => scrollTo('admin-active')} className={getDesktopClass('admin-active')}>Votació</button>
               <button onClick={() => scrollTo('admin-repo')} className={getDesktopClass('admin-repo')}>Gestió</button>
+              <button onClick={() => scrollTo('admin-usuaris')} className={getDesktopClass('admin-usuaris')}>Usuaris</button>
               <button onClick={() => scrollTo('admin-history')} className={getDesktopClass('admin-history')}>Històric</button>
+              <button onClick={() => scrollTo('admin-comentaris')} className={getDesktopClass('admin-comentaris')}>Crítica</button>
             </>
           ) : isRecurs ? (
             <>
@@ -142,7 +147,8 @@ export default function Navbar({ page }) {
               <button onClick={() => scrollTo('search-section')} className={getDesktopClass('search-section')}>Proposar</button>
               <button onClick={() => scrollTo('active-section')} className={getDesktopClass('active-section')}>Votació</button>
               <button onClick={() => scrollTo('repo-section')} className={getDesktopClass('repo-section')}>Repositori</button>
-              <button onClick={() => scrollTo('history-section')} className={getDesktopClass('history-section')}>Històric</button>                    
+              <button onClick={() => scrollTo('history-section')} className={getDesktopClass('history-section')}>Històric</button>
+              <button onClick={() => scrollTo('comments-section')} className={getDesktopClass('comments-section')}>Crítica</button>                    
             </>
           )}
 

@@ -1,31 +1,25 @@
 import { connectDB } from '@/lib/mongodb';
-import { getNumPelisVotacio, getMaxPropostesSetmana } from '@/lib/settings';
+import { getNumPelisVotacio, getMaxPropostesSetmana, getRondaActual } from '@/lib/settings';
+import { getUsuariActual } from '@/lib/auth';
+import { getFilsComentaris, llistarGuanyadores } from '@/lib/comments';
 import Movie from '@/models/Movie';
 import Tag from '@/models/Tag';
 import History from '@/models/History';
 import Setting from '@/models/Setting';
+import Vote from '@/models/Vote';
 import { revalidatePath } from 'next/cache';
-import { cookies } from 'next/headers';
 import mongoose from 'mongoose';
 import LiveSearch from '@/components/LiveSearch';
 import HomeRepository from '@/components/HomeRepository';
 import ActiveMoviesList from '@/components/ActiveMoviesList';
 import Navbar from '@/components/Navbar';
+import WinnerComment from '@/components/WinnerComment';
+import CommentsHistory from '@/components/CommentsHistory';
 
-const DURADA_COOKIE_VOT_SEGONS = 60 * 60 * 24 * 365;
+const SETMANA_MS = 7 * 24 * 60 * 60 * 1000;
 
-async function getRondaActual() {
-  const ronda = await Setting.findOne({ key: 'voting_round' }).lean();
-  return ronda ? String(ronda.value) : '';
-}
-
-// Format de la cookie: "<ronda>:<id de la peli>". Les cookies antigues només tenen l'id.
-function llegirCookieVot(valor) {
-  if (!valor) return null;
-  const separador = valor.lastIndexOf(':');
-  const ronda = separador === -1 ? '' : valor.slice(0, separador);
-  const movieId = valor.slice(separador + 1);
-  return mongoose.isValidObjectId(movieId) ? { ronda, movieId } : null;
+function sumarVot(movieId) {
+  return Movie.updateOne({ _id: movieId }, { $inc: { votes: 1 } });
 }
 
 function restarVot(movieId) {
@@ -53,13 +47,12 @@ export default async function Home() {
       else if (tagsNameMap.has(tagStr)) resolvedTag = tagsNameMap.get(tagStr);
       else resolvedTag = { _id: tagStr, name: tagStr };
     }
-    return { ...m, _id: m._id.toString(), tag: resolvedTag };
+    return { ...m, _id: m._id.toString(), tag: resolvedTag, addedBy: m.addedBy?.toString() ?? null };
   });
 
-  const cStore = await cookies();
-  const vot = llegirCookieVot(cStore.get('voted_movie_id')?.value);
-  const rondaActual = await getRondaActual();
-  const votedMovieId = vot && vot.ronda === rondaActual && activeMovies.some(m => m._id === vot.movieId) ? vot.movieId : null;
+  const usuari = await getUsuariActual();
+  const elMeuVot = usuari ? await Vote.findOne({ user: usuari._id, round: await getRondaActual() }).lean() : null;
+  const votedMovieId = elMeuVot && activeMovies.some(m => m._id === elMeuVot.movie.toString()) ? elMeuVot.movie.toString() : null;
 
   const isVotingReady = activeMovies.length === (await getNumPelisVotacio());
 
@@ -72,7 +65,7 @@ export default async function Home() {
       else if (tagsNameMap.has(tagStr)) resolvedTag = tagsNameMap.get(tagStr);
       else resolvedTag = { _id: tagStr, name: tagStr };
     }
-    return { ...m, _id: m._id.toString(), tag: resolvedTag };
+    return { ...m, _id: m._id.toString(), tag: resolvedTag, addedBy: m.addedBy?.toString() ?? null };
   });
 
   const historyRecords = JSON.parse(
@@ -95,6 +88,7 @@ export default async function Home() {
   moviesData.forEach(movie => {
     if (movie.tmdbId !== undefined && movie.tmdbId !== null) {
       movieMap[String(movie.tmdbId)] = {
+        _id: movie._id.toString(),
         title: movie.title,
         poster: movie.poster,
         release_date: movie.release_date
@@ -106,14 +100,21 @@ export default async function Home() {
     ...record,
     movies: record.movies.map(m => ({
       ...m,
+      movieId: movieMap[String(m.tmdbId)]?._id || null,
       title: movieMap[String(m.tmdbId)]?.title || `Pel·lícula no trobada (ID: ${m.tmdbId})`,
       poster: movieMap[String(m.tmdbId)]?.poster || null,
       release_date: movieMap[String(m.tmdbId)]?.release_date || null
     }))
   }));
 
+  const guanyadores = llistarGuanyadores(historyWithDetails, votingClosed ? activeMovies.find(m => m.guanyadora) : null);
+  const filsComentaris = await getFilsComentaris(usuari);
+
   async function votar(formData) {
     'use server'
+    const votant = await getUsuariActual();
+    if (!votant) return;
+
     await connectDB();
 
     // Si la votació està tancada, no permetre votar ni canviar vots
@@ -126,22 +127,28 @@ export default async function Home() {
     const newId = formData.get('id');
     if (!mongoose.isValidObjectId(newId) || !(await Movie.exists({ _id: newId, en_votacio: true }))) return;
 
-    // El vot de la cookie només compta si és d'aquesta ronda i la peli continua en votació
-    const cookieStore = await cookies();
-    const vot = llegirCookieVot(cookieStore.get('voted_movie_id')?.value);
-    const rondaActual = await getRondaActual();
-    const votVigent = vot && vot.ronda === rondaActual && await Movie.exists({ _id: vot.movieId, en_votacio: true });
-    const oldVotedId = votVigent ? vot.movieId : null;
+    const ronda = await getRondaActual();
+    const votAnterior = await Vote.findOne({ user: votant._id, round: ronda }).lean();
+    const oldVotedId = votAnterior?.movie.toString();
 
     if (oldVotedId === newId) {
       // Si torna a clicar la mateixa, es retira el vot (unvote)
-      await restarVot(newId);
-      cookieStore.delete('voted_movie_id');
+      const retirat = await Vote.deleteOne({ _id: votAnterior._id });
+      if (retirat.deletedCount) await restarVot(newId);
+    } else if (votAnterior) {
+      // Canvi de vot: el filtre per la peli antiga evita comptar dues vegades un doble clic
+      const canviat = await Vote.updateOne({ _id: votAnterior._id, movie: votAnterior.movie }, { movie: newId });
+      if (canviat.modifiedCount) {
+        await restarVot(oldVotedId);
+        await sumarVot(newId);
+      }
     } else {
-      // Primer vot o canvi de vot: resta a l'antiga (si n'hi ha) i suma a la nova
-      if (oldVotedId) await restarVot(oldVotedId);
-      await Movie.findByIdAndUpdate(newId, { $inc: { votes: 1 } });
-      cookieStore.set('voted_movie_id', `${rondaActual}:${newId}`, { maxAge: DURADA_COOKIE_VOT_SEGONS });
+      try {
+        await Vote.create({ user: votant._id, round: ronda, movie: newId });
+        await sumarVot(newId);
+      } catch (err) {
+        if (err?.code !== 11000) throw err; // doble clic: el primer vot ja s'ha desat
+      }
     }
 
     revalidatePath('/');
@@ -149,27 +156,23 @@ export default async function Home() {
 
   async function afegirDesDeUsuari(formData) {
     'use server'
-    const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
-
-    const cookieStore = await cookies();
-    const now = Date.now();
-
-    // Llegim els timestamps de les pel·lícules afegides recentment per aquest usuari
-    const raw = cookieStore.get('added_movies_log')?.value;
-    let timestamps = [];
-    if (raw) {
-      try {
-        timestamps = JSON.parse(raw);
-      } catch {
-        timestamps = [];
-      }
+    const proposant = await getUsuariActual();
+    if (!proposant) {
+      return { success: false, error: "Has d'iniciar sessió per proposar pel·lícules." };
     }
 
-    const recentTimestamps = timestamps.filter(t => now - t < WEEK_MS);
+    await connectDB();
 
-    const maxPropostes = await getMaxPropostesSetmana();
-    if (recentTimestamps.length >= maxPropostes) {
-      return { success: false, error: `Has arribat al límit de ${maxPropostes} pel·lícules afegides aquesta setmana. Torna-ho a provar més endavant.` };
+    // El límit setmanal es compta per usuari; els admins no en tenen, com ja passa al panell
+    if (!proposant.isAdmin) {
+      const maxPropostes = await getMaxPropostesSetmana();
+      const propostesRecents = await Movie.countDocuments({
+        addedBy: proposant._id,
+        createdAt: { $gte: new Date(Date.now() - SETMANA_MS) }
+      });
+      if (propostesRecents >= maxPropostes) {
+        return { success: false, error: `Has arribat al límit de ${maxPropostes} pel·lícules afegides aquesta setmana. Torna-ho a provar més endavant.` };
+      }
     }
 
     const tmdbId = Number(formData.get('tmdbId'));
@@ -179,7 +182,6 @@ export default async function Home() {
     const release_date = formData.get('release_date') || '';
     let tagId = formData.get('tagId');
 
-    await connectDB();
     const existent = await Movie.findOne({ tmdbId });
     if (existent) {
       return { success: false, error: 'Aquesta pel·lícula ja existeix al repositori!' };
@@ -193,19 +195,18 @@ export default async function Home() {
       release_date,
       tag: tagId,
       en_votacio: false,
-      votes: 0
+      votes: 0,
+      addedBy: proposant._id
     });
 
-    recentTimestamps.push(now);
-    cookieStore.set('added_movies_log', JSON.stringify(recentTimestamps), { maxAge: WEEK_MS / 1000 });
-    
     revalidatePath('/');
+    revalidatePath('/admin');
     return { success: true };
   }
 
   return (
     <main className="min-h-screen bg-slate-900 text-slate-100">
-      <Navbar />
+      <Navbar usuari={usuari} />
       <div className="max-w-7xl mx-auto p-6 md:p-12 space-y-12">
         
         <header className="text-center space-y-2 pt-4">
@@ -215,16 +216,22 @@ export default async function Home() {
 
         <section id="search-section" className="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 space-y-3 scroll-mt-24">
           <h3 className="text-sm font-semibold text-slate-300">Proposa una pel·lícula nova</h3>
-          <LiveSearch onAddMovie={afegirDesDeUsuari} tags={tags} existingMovies={[...activeMovies, ...repoMovies]} />
+          <LiveSearch onAddMovie={afegirDesDeUsuari} tags={tags} existingMovies={[...activeMovies, ...repoMovies]} requereixLogin={!usuari} />
+        </section>
+
+        <section id="comment-form-section" className="bg-slate-800 p-6 rounded-2xl shadow-xl border border-slate-700 space-y-3 scroll-mt-24">
+          <h3 className="text-sm font-semibold text-slate-300">Comenta la pel·lícula guanyadora</h3>
+          <WinnerComment guanyadores={guanyadores} usuari={usuari} />
         </section>
 
         <section id="active-section" className="space-y-6 scroll-mt-24">
-          <ActiveMoviesList 
-            activeMovies={activeMovies} 
-            isVotingReady={isVotingReady} 
+          <ActiveMoviesList
+            activeMovies={activeMovies}
+            isVotingReady={isVotingReady}
             votedMovieId={votedMovieId}
-            votar={votar} 
+            votar={votar}
             votingClosed={votingClosed}
+            requereixLogin={!usuari}
           />
         </section>
 
@@ -267,6 +274,11 @@ export default async function Home() {
               })}
             </div>
           )}
+        </section>
+
+        {/* Alçada mínima perquè, en ser l'última secció, el navbar la pugui marcar com a activa */}
+        <section id="comments-section" className="scroll-mt-24 min-h-[calc(100vh-4.5rem)]">
+          <CommentsHistory fils={filsComentaris} guanyadores={guanyadores} usuari={usuari} />
         </section>
 
       </div>

@@ -9,7 +9,9 @@ const MovieSchema = new mongoose.Schema({
   tag: { type: mongoose.Schema.Types.ObjectId, ref: 'Tag', required: true },
   en_votacio: { type: Boolean, default: false },
   guanyadora: { type: Boolean, default: false },
-  votes: { type: Number, default: 0 }
+  votes: { type: Number, default: 0 },
+  addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  createdAt: { type: Date, default: Date.now }
 });
 
 export default mongoose.models.Movie || mongoose.model('Movie', MovieSchema);

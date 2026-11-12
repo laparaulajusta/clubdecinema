@@ -1,17 +1,28 @@
 import { connectDB } from '@/lib/mongodb';
-import { MESOS, ANYS } from '@/lib/constants';
-import { getNumPelisVotacio, getMaxPropostesSetmana, setNumPelisVotacio, setMaxPropostesSetmana } from '@/lib/settings';
+import { MESOS, ANYS, ZONA_HORARIA } from '@/lib/constants';
+import { getNumPelisVotacio, getMaxPropostesSetmana, setNumPelisVotacio, setMaxPropostesSetmana, getRondaActual } from '@/lib/settings';
+import { getFilsComentaris, llistarGuanyadores } from '@/lib/comments';
 import Movie from '@/models/Movie';
 import Tag from '@/models/Tag';
 import History from '@/models/History';
 import Setting from '@/models/Setting';
+import User from '@/models/User';
+import Vote from '@/models/Vote';
+import Comment from '@/models/Comment';
+import Session from '@/models/Session';
+import mongoose from 'mongoose';
 import { revalidatePath } from 'next/cache';
+import { redirect } from 'next/navigation';
+import { getUsuariActual, requireAdmin } from '@/lib/auth';
 import AdminRepository from '@/components/AdminRepository';
 import LiveSearch from '@/components/LiveSearch';
 import Navbar from '@/components/Navbar';
 import VotingControls from '@/components/VotingControls';
+import VotesSummary from '@/components/VotesSummary';
 import TagManager from '@/components/TagManager';
 import ConfiguracioJoc from '@/components/ConfiguracioJoc';
+import UsersAdmin from '@/components/UsersAdmin';
+import CommentsHistory from '@/components/CommentsHistory';
 
 export const dynamic = 'force-dynamic';
 
@@ -29,13 +40,16 @@ async function assignarGuanyadora() {
 }
 
 export default async function AdminPage() {
+  const usuari = await getUsuariActual();
+  if (!usuari?.isAdmin) redirect('/');
+
   await connectDB();
   const rawTags = await Tag.find().lean();
   const tags = rawTags.map(t => ({ _id: t._id.toString(), name: t.name })).sort((a, b) => a.name.localeCompare(b.name));
   const tagsMap = new Map(tags.map(t => [t._id, t]));
   const tagsNameMap = new Map(tags.map(t => [t.name, t]));
 
-  const rawMovies = await Movie.find().lean();
+  const rawMovies = await Movie.find().populate({ path: 'addedBy', model: User, select: 'name username' }).lean();
   const movies = rawMovies.map(m => {
     let resolvedTag = null;
     if (m.tag) {
@@ -44,7 +58,8 @@ export default async function AdminPage() {
       else if (tagsNameMap.has(tagStr)) resolvedTag = tagsNameMap.get(tagStr);
       else resolvedTag = { _id: tagStr, name: tagStr };
     }
-    return { ...m, _id: m._id.toString(), tag: resolvedTag };
+    const addedBy = m.addedBy ? { name: m.addedBy.name, username: m.addedBy.username } : null;
+    return { ...m, _id: m._id.toString(), tag: resolvedTag, addedBy };
   });
 
   const activeMoviesCount = movies.filter(m => m.en_votacio).length;
@@ -68,6 +83,7 @@ export default async function AdminPage() {
   moviesData.forEach(movie => {
     if (movie.tmdbId !== undefined && movie.tmdbId !== null) {
       movieMap[String(movie.tmdbId)] = {
+        _id: movie._id.toString(),
         title: movie.title,
         poster: movie.poster
       };
@@ -78,6 +94,7 @@ export default async function AdminPage() {
     ...record,
     movies: record.movies.map(m => ({
       ...m,
+      movieId: movieMap[String(m.tmdbId)]?._id || null,
       title: movieMap[String(m.tmdbId)]?.title || `Pel·lícula no trobada (ID: ${m.tmdbId})`,
       poster: movieMap[String(m.tmdbId)]?.poster || null
     }))
@@ -89,8 +106,74 @@ export default async function AdminPage() {
   const numPelisVotacio = await getNumPelisVotacio();
   const maxPropostesSetmana = await getMaxPropostesSetmana();
 
+  const rondaActual = await getRondaActual();
+  const rondesArxivades = new Map(historyRecords.filter(r => r.round).map(r => [r.round, r]));
+  const rawVotes = await Vote.find()
+    .sort({ createdAt: -1 })
+    .populate({ path: 'user', model: User, select: 'name username' })
+    .populate({ path: 'movie', model: Movie, select: 'title poster tmdbId guanyadora' })
+    .lean();
+
+  const votantsPerPeli = new Map();
+  rawVotes
+    .filter(v => v.round === rondaActual && v.user && v.movie)
+    .forEach(v => {
+      const movieId = v.movie._id.toString();
+      if (!votantsPerPeli.has(movieId)) votantsPerPeli.set(movieId, []);
+      votantsPerPeli.get(movieId).push({ name: v.user.name, username: v.user.username });
+    });
+
+  const resumVots = movies
+    .filter(m => m.en_votacio)
+    .sort((a, b) => b.votes - a.votes || a.title.localeCompare(b.title))
+    .map(m => ({
+      _id: m._id,
+      title: m.title,
+      poster: m.poster,
+      votes: m.votes,
+      guanyadora: votingClosed && m.guanyadora === true,
+      votants: votantsPerPeli.get(m._id) ?? []
+    }));
+
+  const esVotGuanyador = (vot) => {
+    const arxivada = rondesArxivades.get(vot.round);
+    if (arxivada) return arxivada.movies.some(m => m.guanyadora && String(m.tmdbId) === String(vot.movie?.tmdbId));
+    return vot.round === rondaActual && votingClosed && vot.movie?.guanyadora === true;
+  };
+
+  const votsPerUsuari = new Map();
+  rawVotes.forEach(v => {
+    if (!v.user) return;
+    const userId = v.user._id.toString();
+    if (!votsPerUsuari.has(userId)) votsPerUsuari.set(userId, []);
+    votsPerUsuari.get(userId).push({
+      _id: v._id.toString(),
+      ronda: rondesArxivades.get(v.round)?.roundName ?? (v.round === rondaActual ? 'Ronda actual' : 'Ronda sense arxivar'),
+      title: v.movie?.title ?? 'Pel·lícula eliminada',
+      poster: v.movie?.poster ?? null,
+      guanyadora: esVotGuanyador(v)
+    });
+  });
+
+  const rawUsers = await User.find().lean();
+  const usuaris = rawUsers
+    .map(u => ({
+      _id: u._id.toString(),
+      username: u.username,
+      name: u.name,
+      isAdmin: u.isAdmin === true,
+      alta: new Date(u.createdAt).toLocaleDateString('ca-ES', { timeZone: ZONA_HORARIA }),
+      vots: votsPerUsuari.get(u._id.toString()) ?? []
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const guanyadoraActual = votingClosed ? movies.find(m => m.en_votacio && m.guanyadora) : null;
+  const guanyadores = llistarGuanyadores(historyWithDetails, guanyadoraActual);
+  const filsComentaris = await getFilsComentaris(usuari);
+
   async function desarConfiguracio(formData) {
     'use server'
+    await requireAdmin();
     const numPelisActual = await getNumPelisVotacio();
     const numPelis = formData.has('num_pelis_votacio') ? Number(formData.get('num_pelis_votacio')) : numPelisActual;
     const maxPropostes = Number(formData.get('max_propostes_setmana'));
@@ -113,6 +196,7 @@ export default async function AdminPage() {
 
   async function canviarTag(formData) {
     'use server'
+    await requireAdmin();
     const id = formData.get('id');
     const tagId = formData.get('tagId');
     await connectDB();
@@ -123,6 +207,7 @@ export default async function AdminPage() {
 
   async function toggleVotacio(formData) {
     'use server'
+    await requireAdmin();
     const id = formData.get('id');
     await connectDB();
     const movie = await Movie.findById(id);
@@ -136,21 +221,26 @@ export default async function AdminPage() {
     movie.en_votacio = !movie.en_votacio;
     movie.votes = 0;
     await movie.save();
+    // Els vots se li posen a 0: qui l'havia votat aquesta ronda pot tornar a votar
+    await Vote.deleteMany({ round: await getRondaActual(), movie: id });
     revalidatePath('/admin');
     revalidatePath('/');
   }
 
   async function eliminarPeli(formData) {
     'use server'
+    await requireAdmin();
     const id = formData.get('id');
     await connectDB();
     await Movie.findByIdAndDelete(id);
+    await Vote.deleteMany({ round: await getRondaActual(), movie: id });
     revalidatePath('/admin');
     revalidatePath('/');
   }
 
   async function editarPeli(formData) {
     'use server'
+    await requireAdmin();
     const id = formData.get('id');
     const title = String(formData.get('title') ?? '').trim();
     const overview = String(formData.get('overview') ?? '').trim();
@@ -202,6 +292,7 @@ export default async function AdminPage() {
 
   async function afegirTag(formData) {
     'use server'
+    await requireAdmin();
     const name = formData.get('name');
     if (!name) return;
     await connectDB();
@@ -212,6 +303,7 @@ export default async function AdminPage() {
 
   async function eliminarTag(formData) {
     'use server'
+    await requireAdmin();
     const id = formData.get('id');
     await connectDB();
     await Tag.findByIdAndDelete(id);
@@ -220,7 +312,8 @@ export default async function AdminPage() {
   }
 
   async function tancarRonda() {
-    'use server'    
+    'use server'
+    await requireAdmin();
     await connectDB();
 
     if ((await Movie.countDocuments({ en_votacio: true })) === 0) {
@@ -237,6 +330,7 @@ export default async function AdminPage() {
 
   async function reobrirRonda() {
     'use server'
+    await requireAdmin();
     await connectDB();
 
     await Movie.updateMany({ en_votacio: true }, { $set: { guanyadora: false } });
@@ -249,6 +343,7 @@ export default async function AdminPage() {
 
   async function resetejarVotacio(formData) {
     'use server'
+    await requireAdmin();
     const mes = formData.get('mes');
     const any = formData.get('any');
     const roundName = `${mes} ${any}`;
@@ -278,6 +373,7 @@ export default async function AdminPage() {
 
     await History.create({
       roundName,
+      round: await getRondaActual(),
       movies: active.map(m => ({
         tmdbId: m.tmdbId,
         votes: m.votes,
@@ -287,7 +383,7 @@ export default async function AdminPage() {
     
     await Movie.updateMany({ en_votacio: true }, { $set: { en_votacio: false, votes: 0 } });
     await Setting.findOneAndUpdate({ key: 'voting_closed' }, { value: false }, { upsert: true });
-    // Ronda nova: invalida els vots desats a les cookies de tots els usuaris
+    // Ronda nova: els vots que es facin a partir d'ara ja no es barregen amb els de la ronda arxivada
     await Setting.findOneAndUpdate({ key: 'voting_round' }, { value: Date.now().toString() }, { upsert: true });
 
     revalidatePath('/admin');
@@ -297,6 +393,7 @@ export default async function AdminPage() {
 
   async function afegirDesDeAdmin(formData) {
     'use server'
+    const admin = await requireAdmin();
     const tmdbId = Number(formData.get('tmdbId'));
     const title = formData.get('title');
     const poster = formData.get('poster');
@@ -318,9 +415,49 @@ export default async function AdminPage() {
       release_date,
       tag: tagId,
       en_votacio: false,
-      votes: 0
+      votes: 0,
+      addedBy: admin._id
     });
-    
+
+    revalidatePath('/admin');
+    revalidatePath('/');
+    return { success: true };
+  }
+
+  async function canviarAdmin(formData) {
+    'use server'
+    const admin = await requireAdmin();
+    const id = formData.get('id');
+    if (!mongoose.isValidObjectId(id)) return { success: false, error: 'Usuari no vàlid.' };
+    if (id === admin._id) return { success: false, error: 'No et pots treure els permisos a tu mateix.' };
+
+    await connectDB();
+    await User.updateOne({ _id: id }, { isAdmin: formData.get('isAdmin') === 'true' });
+    revalidatePath('/admin');
+    return { success: true };
+  }
+
+  async function eliminarUsuari(formData) {
+    'use server'
+    const admin = await requireAdmin();
+    const id = formData.get('id');
+    if (!mongoose.isValidObjectId(id)) return { success: false, error: 'Usuari no vàlid.' };
+    if (id === admin._id) return { success: false, error: 'No et pots eliminar a tu mateix.' };
+
+    await connectDB();
+    const votRondaActual = await Vote.findOne({ user: id, round: await getRondaActual() }).lean();
+    if (votRondaActual) {
+      await Movie.updateOne({ _id: votRondaActual.movie, en_votacio: true, votes: { $gt: 0 } }, { $inc: { votes: -1 } });
+      const tancada = await Setting.findOne({ key: 'voting_closed' });
+      if (tancada?.value) await assignarGuanyadora();
+    }
+
+    const comentaris = await Comment.find({ user: id }).select('_id').lean();
+    await Comment.deleteMany({ $or: [{ user: id }, { parent: { $in: comentaris.map(c => c._id) } }] });
+    await Vote.deleteMany({ user: id });
+    await Session.deleteMany({ user: id });
+    await User.deleteOne({ _id: id });
+
     revalidatePath('/admin');
     revalidatePath('/');
     return { success: true };
@@ -328,7 +465,7 @@ export default async function AdminPage() {
 
   return (
     <main className="min-h-screen bg-slate-900 text-slate-100">
-      <Navbar page={"admin"} />
+      <Navbar page={"admin"} usuari={usuari} />
       <div className="max-w-7xl mx-auto p-6 md:p-12 space-y-12">
         
         <header className="text-center space-y-2 pt-4">
@@ -360,8 +497,8 @@ export default async function AdminPage() {
           </div>
         </section>
 
-        <section id="admin-active" className="scroll-mt-24">
-          <VotingControls 
+        <section id="admin-active" className="space-y-6 scroll-mt-24">
+          <VotingControls
             activeMoviesCount={activeMoviesCount}
             numPelisVotacio={numPelisVotacio}
             votingClosed={votingClosed}
@@ -371,6 +508,7 @@ export default async function AdminPage() {
             reobrirRonda={reobrirRonda}
             resetejarVotacio={resetejarVotacio}
           />
+          <VotesSummary pelis={resumVots} />
         </section>
 
         <section id="admin-repo" className="scroll-mt-24">
@@ -384,6 +522,15 @@ export default async function AdminPage() {
             canviarTag={canviarTag}
             historyRecords={historyWithDetails}
             numPelisVotacio={numPelisVotacio}
+          />
+        </section>
+
+        <section id="admin-usuaris" className="scroll-mt-24">
+          <UsersAdmin
+            usuaris={usuaris}
+            usuariActualId={usuari._id}
+            canviarAdmin={canviarAdmin}
+            eliminarUsuari={eliminarUsuari}
           />
         </section>
 
@@ -431,6 +578,10 @@ export default async function AdminPage() {
               ))}
             </div>
           )}
+        </section>
+
+        <section id="admin-comentaris" className="scroll-mt-24 min-h-[calc(100vh-4.5rem)]">
+          <CommentsHistory fils={filsComentaris} guanyadores={guanyadores} usuari={usuari} modeAdmin />
         </section>
 
       </div>
