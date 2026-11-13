@@ -49,10 +49,10 @@ function FilaUsuari({ usuari, esTu, canviarAdmin, onEliminar }) {
     <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 shadow-md">
       <div className="flex flex-wrap items-center gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm truncate">
+          <p className="text-sm flex items-center flex-wrap gap-1.5">
             <span className="font-semibold text-slate-100">{usuari.name}</span>
-            <span className="text-xs text-slate-500 ml-1.5">@{usuari.username}</span>
-            {esTu && <span className="text-[10px] text-slate-500 ml-1.5">(tu)</span>}
+            <span className="text-xs text-slate-500">@{usuari.username}</span>
+            {esTu && <span className="text-[10px] text-slate-500">(tu)</span>}
           </p>
           <div className="flex items-center gap-2 mt-1">
             {usuari.isAdmin && (
@@ -62,7 +62,7 @@ function FilaUsuari({ usuari, esTu, canviarAdmin, onEliminar }) {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex-1 flex flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={() => setMostrarVots(v => !v)}
@@ -83,6 +83,7 @@ function FilaUsuari({ usuari, esTu, canviarAdmin, onEliminar }) {
                 type="button"
                 onClick={canviarRol}
                 disabled={isPending}
+                title={usuari.isAdmin ? 'Eliminar administrador' : 'Fer administrador'}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition flex items-center gap-1.5 ${
                   isPending
                     ? 'bg-slate-600 text-slate-300 border-slate-600 cursor-wait'
@@ -92,7 +93,7 @@ function FilaUsuari({ usuari, esTu, canviarAdmin, onEliminar }) {
                 }`}
               >
                 {isPending && <span className="w-3 h-3 border-2 border-slate-300 border-t-transparent rounded-full animate-spin" />}
-                {isPending ? 'Desant...' : usuari.isAdmin ? 'Treure admin' : 'Fer admin'}
+                {isPending ? 'Desant...' : usuari.isAdmin ? '👤' : '👑'}
               </button>
 
               <button

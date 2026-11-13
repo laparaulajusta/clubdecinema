@@ -50,7 +50,18 @@ export async function afegirComentari(formData) {
     return { success: false, error: 'Selecciona una pel·lícula vàlida.' };
   }
 
-  const comentari = await Comment.create({ user: autor._id, movie: movieId, parent: parentId, text });
+  const rating = parentId ? 0 : Number(formData.get('rating') ?? 0);
+  if (!Number.isInteger(rating) || rating < 0 || rating > 10) {
+    return { success: false, error: 'La valoració ha de ser un nombre del 0 al 10.' };
+  }
+
+  const comentari = await Comment.create({
+    user: autor._id,
+    movie: movieId,
+    parent: parentId,
+    text,
+    ...(rating > 0 && { rating })
+  });
   revalidarComentaris();
   return { success: true, id: comentari._id.toString() };
 }

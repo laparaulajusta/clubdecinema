@@ -114,6 +114,12 @@ function Comentari({ comentari, modeAdmin, destacat, cerca, onRespondre, onElimi
         <p className="text-sm">
           <span className="font-semibold text-slate-100">{comentari.user?.name ?? 'Usuari eliminat'}</span>
           {comentari.user && <span className="text-xs text-slate-500 ml-1.5">@{comentari.user.username}</span>}
+          {comentari.rating && (
+            <span className="text-xs font-semibold ml-2" title={`Valoració: ${comentari.rating} de 10`}>
+              <span className="text-amber-400">★</span>
+              <span className="text-slate-400 ml-1">{comentari.rating}/10</span>
+            </span>
+          )}
         </p>
         <span className="text-[11px] text-slate-500">
           {comentari.data}

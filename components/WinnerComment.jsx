@@ -1,6 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
 import WinnerSelect from '@/components/WinnerSelect';
+import StarRating from '@/components/StarRating';
 import { afegirComentari } from '@/app/actions/comments';
 import { avisarComentariPublicat, obrirModalLogin } from '@/lib/events';
 import { MAX_CARACTERS_COMENTARI } from '@/lib/constants';
@@ -8,6 +9,7 @@ import { MAX_CARACTERS_COMENTARI } from '@/lib/constants';
 export default function WinnerComment({ guanyadores, usuari }) {
   const [movieId, setMovieId] = useState(guanyadores[0]?.movieId ?? '');
   const [text, setText] = useState('');
+  const [valoracio, setValoracio] = useState(0);
   const [error, setError] = useState('');
   const [isSaving, startSaving] = useTransition();
   const buit = !text.trim();
@@ -25,12 +27,14 @@ export default function WinnerComment({ guanyadores, usuari }) {
     const formData = new FormData();
     formData.append('movieId', movieId);
     formData.append('text', text.trim());
+    formData.append('rating', String(valoracio));
     setError('');
     startSaving(async () => {
       try {
         const res = await afegirComentari(formData);
         if (res?.success) {
           setText('');
+          setValoracio(0);
           avisarComentariPublicat(res.id);
         } else {
           setError(res?.error || "No s'ha pogut publicar el comentari.");
@@ -58,6 +62,11 @@ export default function WinnerComment({ guanyadores, usuari }) {
         disabled={isSaving}
         className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 shadow-inner resize-y disabled:opacity-60"
       />
+
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+        <span className="text-xs text-slate-400">La teva valoració:</span>
+        <StarRating value={valoracio} onChange={setValoracio} disabled={isSaving} />
+      </div>
 
       <div className="flex flex-wrap justify-between items-center gap-2">
         <span className="text-[11px] text-slate-500">

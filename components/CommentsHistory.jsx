@@ -14,7 +14,6 @@ const DURADA_DESTACAT_MS = 2500;
 const clauPeli = (fil) => fil.movie?._id ?? SENSE_PELI;
 const comptarComentaris = (fils) => fils.reduce((total, fil) => total + 1 + fil.respostes.length, 0);
 
-// Segueix l'ordre de les guanyadores (la més recent primer); dins de cada grup, els fils ja arriben del més nou al més antic
 function agruparPerPeli(fils, guanyadores) {
   const grups = new Map(guanyadores.map(g => [g.movieId, { ...g, fils: [] }]));
   fils.forEach(fil => {
@@ -33,6 +32,17 @@ function agruparPerPeli(fils, guanyadores) {
   return [...grups.values()].filter(g => g.fils.length > 0);
 }
 
+function ordenarGrups(grups, ordenacio, mitjanes) {
+  if (!ordenacio) return grups;
+  const signe = ordenacio === 'mes-votades' ? -1 : 1;
+  return [...grups].sort((a, b) => {
+    const va = mitjanes.get(a.movieId)?.valor;
+    const vb = mitjanes.get(b.movieId)?.valor;
+    if (va === undefined || vb === undefined) return (va === undefined) - (vb === undefined);
+    return signe * (va - vb);
+  });
+}
+
 function textEliminar(comentari) {
   const respostes = comentari.respostes?.length ?? 0;
   const ambRespostes = respostes === 0 ? '' : respostes === 1 ? ' i la seva resposta' : ` i les seves ${respostes} respostes`;
@@ -46,9 +56,23 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
   const [perMostrar, setPerMostrar] = useState(null);
   const [destacat, setDestacat] = useState(null);
   const [comentariAEliminar, setComentariAEliminar] = useState(null);
+  const [ordenacio, setOrdenacio] = useState(''); // '', 'mes-votades' o 'menys-votades'
+  const [desplegats, setDesplegats] = useState(new Set());
   const sentinellaRef = useRef(null);
 
-  const totsElsGrups = useMemo(() => agruparPerPeli(fils, guanyadores), [fils, guanyadores]);
+  const mitjanes = useMemo(() => {
+    const resultat = new Map();
+    agruparPerPeli(fils, guanyadores).forEach(grup => {
+      const valoracions = grup.fils.map(f => f.rating).filter(Boolean);
+      if (valoracions.length === 0) return;
+      const valor = valoracions.reduce((suma, v) => suma + v, 0) / valoracions.length;
+      resultat.set(grup.movieId, { valor, mitjana: valor.toLocaleString('ca-ES', { maximumFractionDigits: 1 }), total: valoracions.length });
+    });
+    return resultat;
+  }, [fils, guanyadores]);
+
+  const totsElsGrups = ordenarGrups(agruparPerPeli(fils, guanyadores), ordenacio, mitjanes);
+
   const opcionsPelis = totsElsGrups.map(g => ({
     movieId: g.movieId,
     title: g.title,
@@ -56,7 +80,7 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
     roundName: g.roundName,
     total: comptarComentaris(g.fils),
   }));
-  // Si s'eliminen tots els comentaris de la peli filtrada, es torna a "totes"
+  
   const peliFiltrada = totsElsGrups.some(g => g.movieId === filtrePeli) ? filtrePeli : '';
 
   const grups = useMemo(() => {
@@ -65,8 +89,8 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
       (!peliFiltrada || clauPeli(fil) === peliFiltrada) &&
       (!text || [fil, ...fil.respostes].some(c => c.text.toLowerCase().includes(text)))
     );
-    return agruparPerPeli(filtrats, guanyadores);
-  }, [fils, guanyadores, peliFiltrada, cerca]);
+    return ordenarGrups(agruparPerPeli(filtrats, guanyadores), ordenacio, mitjanes);
+  }, [fils, guanyadores, peliFiltrada, cerca, ordenacio, mitjanes]);
 
   const ordre = useMemo(() => grups.flatMap(g => g.fils.map(f => f._id)), [grups]);
   const amagats = ordre.length - visibles;
@@ -92,6 +116,7 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
   useEffect(() => escoltarComentariPublicat((id) => {
     setFiltrePeli('');
     setCerca('');
+    setOrdenacio('');
     setPerMostrar(id);
   }), []);
 
@@ -125,14 +150,34 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
     setVisibles(COMENTARIS_PER_TANDA);
   };
 
-  let restants = visibles;
+  // En ordenar, tots els grups es pleguen; en treure l'ordenació, es tornen a desplegar
+  const canviarOrdenacio = (valor) => {
+    setOrdenacio(valor);
+    setDesplegats(new Set());
+    setVisibles(COMENTARIS_PER_TANDA);
+  };
+
+  const commutarGrup = (movieId) => {
+    setDesplegats(anteriors => {
+      const nous = new Set(anteriors);
+      if (nous.has(movieId)) nous.delete(movieId);
+      else nous.add(movieId);
+      return nous;
+    });
+  };
+
+  const esPlegat = (movieId) => Boolean(ordenacio) && !desplegats.has(movieId);
+
+  // Amb ordenació es mostren tots els grups (plegats) i els desplegats amb tots els seus comentaris; sense ordenació, els comentaris es van mostrant per tandes
+  let restants = ordenacio ? Infinity : visibles;
   const grupsVisibles = [];
   for (const grup of grups) {
     if (restants <= 0) break;
-    const filsVisibles = grup.fils.slice(0, restants);
+    const filsVisibles = esPlegat(grup.movieId) ? [] : grup.fils.slice(0, restants);
     restants -= filsVisibles.length;
     grupsVisibles.push({ ...grup, filsVisibles });
   }
+  const amagatsVisibles = ordenacio ? 0 : amagats;
 
   return (
     <div className="space-y-6">
@@ -174,6 +219,18 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
                 )}
               </div>
             )}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <span className="hidden sm:inline text-xs text-slate-400 font-medium">Ordenar:</span>
+              <select
+                value={ordenacio}
+                onChange={(e) => canviarOrdenacio(e.target.value)}
+                className="w-full sm:w-auto bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 cursor-pointer"
+              >
+                <option value="">Més recents</option>
+                <option value="mes-votades">Més valorades</option>
+                <option value="menys-votades">Menys valorades</option>
+              </select>
+            </div>
           </div>
 
           {grups.length === 0 ? (
@@ -182,7 +239,12 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
             <div className="space-y-4">
               {grupsVisibles.map(grup => (
                 <div key={grup.movieId} className="bg-slate-800/40 border border-slate-700/60 rounded-2xl overflow-hidden shadow-sm">
-                  <div className="flex items-center gap-3 px-4 py-3 bg-slate-800 border-b border-slate-700/60">
+                  <div
+                    onClick={ordenacio ? () => commutarGrup(grup.movieId) : undefined}
+                    className={`flex items-center gap-3 px-4 py-3 bg-slate-800 ${
+                      esPlegat(grup.movieId) ? '' : 'border-b border-slate-700/60'
+                    } ${ordenacio ? 'cursor-pointer hover:bg-slate-700/60 transition-colors' : ''}`}
+                  >
                     {grup.poster ? (
                       <img src={`https://image.tmdb.org/t/p/w92${grup.poster}`} alt={grup.title} className="w-10 h-14 object-cover rounded shadow flex-shrink-0" />
                     ) : (
@@ -194,13 +256,22 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
                           {grup.roundName}
                         </span>
                       )}
-                      <h3 className="font-bold text-sm sm:text-base text-slate-100 truncate mt-1">
-                        {grup.roundName && '🏆 '}{grup.title}
+                      <h3 className="flex items-center gap-4 font-bold text-sm sm:text-base text-slate-100 truncate mt-1">
+                        <span>{grup.roundName && '🏆 '}{grup.title}</span>
+                        {mitjanes.has(grup.movieId) && (
+                          <span className="flex items-center gap-1">
+                            <span className="text-amber-400 font-semibold">★</span>
+                            <span className="text-sm text-slate-400">{mitjanes.get(grup.movieId).mitjana} {`(${mitjanes.get(grup.movieId).total})`}</span>
+                          </span>
+                        )}
                       </h3>
                     </div>
                     <span className="text-xs text-slate-400 flex-shrink-0" title="Comentaris i respostes">
                       💬 {comptarComentaris(grup.fils)}
                     </span>
+                    {ordenacio && (
+                      <span className={`text-slate-400 text-xs flex-shrink-0 transition-transform ${esPlegat(grup.movieId) ? '' : 'rotate-180'}`}>▼</span>
+                    )}
                   </div>
 
                   <div className="divide-y divide-slate-700/40">
@@ -219,7 +290,7 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
                 </div>
               ))}
 
-              {amagats > 0 && (
+              {amagatsVisibles > 0 && (
                 <button
                   ref={sentinellaRef}
                   type="button"
@@ -228,7 +299,7 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
                 >
                   <span className="text-lg animate-bounce">▼</span>
                   <span className="text-xs">
-                    {amagats === 1 ? 'Queda 1 comentari' : `Queden ${amagats} comentaris`} · baixa o clica per veure'n més
+                    {amagatsVisibles === 1 ? 'Queda 1 comentari' : `Queden ${amagatsVisibles} comentaris`} · baixa o clica per veure'n més
                   </span>
                 </button>
               )}
