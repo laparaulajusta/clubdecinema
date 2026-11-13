@@ -241,7 +241,7 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
                 <div key={grup.movieId} className="bg-slate-800/40 border border-slate-700/60 rounded-2xl overflow-hidden shadow-sm">
                   <div
                     onClick={ordenacio ? () => commutarGrup(grup.movieId) : undefined}
-                    className={`flex items-center gap-3 px-4 py-3 bg-slate-800 ${
+                    className={`relative flex items-center gap-3 px-4 py-3 bg-slate-800 ${
                       esPlegat(grup.movieId) ? '' : 'border-b border-slate-700/60'
                     } ${ordenacio ? 'cursor-pointer hover:bg-slate-700/60 transition-colors' : ''}`}
                   >
@@ -256,17 +256,17 @@ export default function CommentsHistory({ fils = [], guanyadores = [], usuari = 
                           {grup.roundName}
                         </span>
                       )}
-                      <h3 className="flex items-center gap-4 font-bold text-sm sm:text-base text-slate-100 truncate mt-1">
-                        <span>{grup.roundName && '🏆 '}{grup.title}</span>
+                      <h3 className="flex items-start gap-4 font-bold text-sm sm:text-base text-slate-100 mt-1">
+                        <span className="min-w-0">{grup.roundName && '🏆 '}{grup.title}</span>
                         {mitjanes.has(grup.movieId) && (
-                          <span className="flex items-center gap-1">
+                          <span className="flex flex-shrink-0 items-center gap-1">
                             <span className="text-amber-400 font-semibold">★</span>
-                            <span className="text-sm text-slate-400">{mitjanes.get(grup.movieId).mitjana} {`(${mitjanes.get(grup.movieId).total})`}</span>
+                            <span className="text-sm text-slate-400 whitespace-nowrap">{mitjanes.get(grup.movieId).mitjana} {`(${mitjanes.get(grup.movieId).total})`}</span>
                           </span>
                         )}
                       </h3>
                     </div>
-                    <span className="text-xs text-slate-400 flex-shrink-0" title="Comentaris i respostes">
+                    <span className="text-xs text-slate-400 flex-shrink-0 absolute top-4 right-4" title="Comentaris i respostes">
                       💬 {comptarComentaris(grup.fils)}
                     </span>
                     {ordenacio && (

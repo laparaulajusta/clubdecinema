@@ -62,7 +62,7 @@ function FilaUsuari({ usuari, esTu, canviarAdmin, onEliminar }) {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-wrap justify-end gap-2">
+        <div className="flex-1 flex flex-row-reverse flex-wrap justify-start gap-2">
           <button
             type="button"
             onClick={() => setMostrarVots(v => !v)}
@@ -78,7 +78,7 @@ function FilaUsuari({ usuari, esTu, canviarAdmin, onEliminar }) {
           </button>
 
           {!esTu && (
-            <>
+            <div className="flex justify-end gap-2">
               <button
                 type="button"
                 onClick={canviarRol}
@@ -104,7 +104,7 @@ function FilaUsuari({ usuari, esTu, canviarAdmin, onEliminar }) {
               >
                 🗑️
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
