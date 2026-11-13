@@ -1,6 +1,6 @@
 import { connectDB } from '@/lib/mongodb';
 import { MESOS, ANYS, ZONA_HORARIA } from '@/lib/constants';
-import { getNumPelisVotacio, getMaxPropostesSetmana, setNumPelisVotacio, setMaxPropostesSetmana, getRondaActual } from '@/lib/settings';
+import { getNumPelisVotacio, getMaxPropostesSetmana, setNumPelisVotacio, setMaxPropostesSetmana, getRondaActual, getDriveUri, setDriveUri } from '@/lib/settings';
 import { getFilsComentaris, llistarGuanyadores } from '@/lib/comments';
 import Movie from '@/models/Movie';
 import Tag from '@/models/Tag';
@@ -105,6 +105,7 @@ export default async function AdminPage() {
 
   const numPelisVotacio = await getNumPelisVotacio();
   const maxPropostesSetmana = await getMaxPropostesSetmana();
+  const driveUri = await getDriveUri();
 
   const rondaActual = await getRondaActual();
   const rondesArxivades = new Map(historyRecords.filter(r => r.round).map(r => [r.round, r]));
@@ -186,8 +187,15 @@ export default async function AdminPage() {
       return { success: false, message: 'No es pot canviar el nombre de pel·lícules per votació mentre hi hagi pel·lícules en votació.' };
     }
 
+    const driveUri = String(formData.get('drive_uri') ?? '').trim();
+    const esEnllacWeb = URL.canParse(driveUri) && ['http:', 'https:'].includes(new URL(driveUri).protocol);
+    if (driveUri && !esEnllacWeb) {
+      return { success: false, message: "L'enllaç del drive ha de ser una adreça web vàlida (http o https)." };
+    }
+
     await setNumPelisVotacio(numPelis);
     await setMaxPropostesSetmana(maxPropostes);
+    await setDriveUri(driveUri);
 
     revalidatePath('/admin');
     revalidatePath('/');
@@ -465,7 +473,7 @@ export default async function AdminPage() {
 
   return (
     <main className="min-h-screen bg-slate-900 text-slate-100">
-      <Navbar page={"admin"} usuari={usuari} />
+      <Navbar page={"admin"} usuari={usuari} driveUri={driveUri} />
       <div className="max-w-7xl mx-auto p-6 md:p-12 space-y-12">
         
         <header className="text-center space-y-2 pt-4">
@@ -476,6 +484,7 @@ export default async function AdminPage() {
         <ConfiguracioJoc
           numPelisVotacio={numPelisVotacio}
           maxPropostesSetmana={maxPropostesSetmana}
+          driveUri={driveUri}
           pelisEnVotacio={activeMoviesCount}
           desarConfiguracio={desarConfiguracio}
         />

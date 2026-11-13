@@ -2,9 +2,10 @@
 import { useState, useEffect, useTransition } from 'react';
 import { DURADA_MISSATGES_MS } from '@/lib/constants';
 
-export default function ConfiguracioJoc({ numPelisVotacio, maxPropostesSetmana, pelisEnVotacio, desarConfiguracio }) {
+export default function ConfiguracioJoc({ numPelisVotacio, maxPropostesSetmana, driveUri, pelisEnVotacio, desarConfiguracio }) {
   const [numPelis, setNumPelis] = useState(String(numPelisVotacio));
   const [maxPropostes, setMaxPropostes] = useState(String(maxPropostesSetmana));
+  const [drive, setDrive] = useState(driveUri);
   const [statusMsg, setStatusMsg] = useState({ text: '', type: '' });
   const [isSaving, startSaving] = useTransition();
 
@@ -19,7 +20,9 @@ export default function ConfiguracioJoc({ numPelisVotacio, maxPropostesSetmana, 
 
   const numPelisBloquejat = pelisEnVotacio > 0;
   const numPelisMostrat = numPelisBloquejat ? String(numPelisVotacio) : numPelis;
-  const senseCanvis = Number(numPelisMostrat) === numPelisVotacio && Number(maxPropostes) === maxPropostesSetmana;
+  const senseCanvis = Number(numPelisMostrat) === numPelisVotacio
+    && Number(maxPropostes) === maxPropostesSetmana
+    && drive.trim() === driveUri;
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -38,7 +41,20 @@ export default function ConfiguracioJoc({ numPelisVotacio, maxPropostesSetmana, 
 
   return (
     <form onSubmit={handleSubmit} className="bg-slate-800 border border-slate-700 p-5 rounded-xl shadow-lg">
-      <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+      <label className="block space-y-1">
+        <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Enllaç del drive</span>
+        <input
+          type="url"
+          name="drive_uri"
+          value={drive}
+          onChange={(e) => setDrive(e.target.value)}
+          placeholder="https://..."
+          disabled={isSaving}
+          className={inputClass}
+        />
+      </label>
+
+      <div className="flex flex-col sm:flex-row sm:items-end gap-4 mt-4">
         <label className="flex-1 space-y-1">
           <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pel·lícules per votació</span>
           <input
@@ -83,7 +99,7 @@ export default function ConfiguracioJoc({ numPelisVotacio, maxPropostesSetmana, 
           {isSaving && <span className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />}
           {isSaving ? 'Desant...' : '💾 Desar'}
         </button>
-      </div>
+      </div>      
 
       {numPelisBloquejat && (
         <p className="mt-3 text-[11px] text-amber-400">

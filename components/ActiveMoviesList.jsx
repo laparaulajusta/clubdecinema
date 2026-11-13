@@ -76,7 +76,7 @@ function VoteButton({ isMyVote, votedMovieId, compact, requereixLogin }) {
   );
 }
 
-export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMovieId, votar, votingClosed = false, requereixLogin = false }) {
+export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMovieId, votar, votingClosed = false, requereixLogin = false, driveUri = '' }) {
   const [viewMode, setViewMode] = useState('detailed'); // 'detailed' o 'compact'
   const [expandedIds, setExpandedIds] = useState({});
   
@@ -144,11 +144,11 @@ export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMov
           <div className="flex flex-col gap-3">
             <span>🔒 La votació s'ha tancat. Gràcies a tots per participar!</span>
             
-            {process.env.NEXT_PUBLIC_KDRIVE_URI && (() => {
+            {driveUri && (() => {
               const winningMovie = displayedMovies.find(movie => movie.guanyadora);
               return winningMovie ? (
                 <a 
-                href={process.env.NEXT_PUBLIC_KDRIVE_URI} 
+                href={driveUri}
                 target="_blank" 
                 rel="noopener noreferrer" 
                 className="w-full sm:w-auto inline-flex justify-center bg-indigo-800 hover:bg-indigo-700 text-white py-2.5 rounded-xl font-semibold shadow-md shadow-indigo-950/50 transition-all duration-200 cursor-pointer"

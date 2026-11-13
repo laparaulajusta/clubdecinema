@@ -1,5 +1,5 @@
 import { connectDB } from '@/lib/mongodb';
-import { getNumPelisVotacio, getMaxPropostesSetmana, getRondaActual } from '@/lib/settings';
+import { getNumPelisVotacio, getMaxPropostesSetmana, getRondaActual, getDriveUri } from '@/lib/settings';
 import { getUsuariActual } from '@/lib/auth';
 import { getFilsComentaris, llistarGuanyadores } from '@/lib/comments';
 import Movie from '@/models/Movie';
@@ -109,6 +109,7 @@ export default async function Home() {
 
   const guanyadores = llistarGuanyadores(historyWithDetails, votingClosed ? activeMovies.find(m => m.guanyadora) : null);
   const filsComentaris = await getFilsComentaris(usuari);
+  const driveUri = await getDriveUri();
 
   async function votar(formData) {
     'use server'
@@ -206,7 +207,7 @@ export default async function Home() {
 
   return (
     <main className="min-h-screen bg-slate-900 text-slate-100">
-      <Navbar usuari={usuari} />
+      <Navbar usuari={usuari} driveUri={driveUri} />
       <div className="max-w-7xl mx-auto p-6 md:p-12 space-y-12">
         
         <header className="text-center space-y-2 pt-4">
@@ -232,6 +233,7 @@ export default async function Home() {
             votar={votar}
             votingClosed={votingClosed}
             requereixLogin={!usuari}
+            driveUri={driveUri}
           />
         </section>
 

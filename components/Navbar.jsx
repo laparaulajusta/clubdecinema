@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import UserMenu from '@/components/UserMenu';
 
-export default function Navbar({ page, usuari = null }) {
+export default function Navbar({ page, usuari = null, driveUri = '' }) {
   const [isOpen, setIsOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('');
   const isAdmin = page === "admin";
@@ -111,9 +111,11 @@ export default function Navbar({ page, usuari = null }) {
           <a href="/recursos" className="text-slate-300 hover:text-indigo-300 bg-slate-800/40 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700/50 transition cursor-pointer">
             📚 Recursos
           </a>
-          <a href={process.env.NEXT_PUBLIC_KDRIVE_URI} target="_blank" rel="noopener noreferrer" className="text-slate-300 hover:text-indigo-300 bg-slate-800/40 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700/50 transition cursor-pointer flex items-center gap-1">
-            kDrive ↗
-          </a>  
+          {driveUri && (
+            <a href={driveUri} target="_blank" rel="noopener noreferrer" className="text-slate-300 hover:text-indigo-300 bg-slate-800/40 hover:bg-slate-800 px-3 py-1.5 rounded-lg border border-slate-700/50 transition cursor-pointer flex items-center gap-1">
+              🎞️ Drive ↗
+            </a>
+          )}
         </div>
 
         <div className="md:hidden flex items-center">
@@ -157,9 +159,11 @@ export default function Navbar({ page, usuari = null }) {
             <a href="/recursos" className="block text-center bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 rounded-lg font-medium transition">
               📚 Recursos
             </a>
-            <a href={process.env.NEXT_PUBLIC_KDRIVE_URI} target="_blank" rel="noopener noreferrer" className="block text-center bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 rounded-lg font-medium transition">
-              kDrive ↗
-            </a>  
+            {driveUri && (
+              <a href={driveUri} target="_blank" rel="noopener noreferrer" className="block text-center bg-slate-800 hover:bg-slate-700 text-slate-200 py-3 rounded-lg font-medium transition">
+                🎞️ Drive ↗
+              </a>
+            )}
           </div>
         </div>
       )}

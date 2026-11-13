@@ -1,12 +1,14 @@
 import Navbar from '@/components/Navbar'; // Ajusta la ruta del Navbar si cal
 import { getUsuariActual } from '@/lib/auth';
+import { getDriveUri } from '@/lib/settings';
 
 export default async function RecursosPage() {
   const usuari = await getUsuariActual();
+  const driveUri = await getDriveUri();
 
   return (
     <main className="min-h-screen bg-slate-950 text-slate-100">
-      <Navbar page={"recurs"} usuari={usuari} />
+      <Navbar page={"recurs"} usuari={usuari} driveUri={driveUri} />
 
       <div className="max-w-7xl mx-auto p-6 md:p-12 space-y-12">
         {/* Capçalera */}
