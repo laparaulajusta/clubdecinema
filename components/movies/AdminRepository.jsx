@@ -444,7 +444,7 @@ export default function AdminRepository({ movies, tags, activeMoviesCount, toggl
                         )}
                         <div className="min-w-0 flex-1">
                           <div className="flex justify-between items-start gap-1">
-                            <h4 className="font-bold text-sm text-slate-100 truncate" title={movie.title}>{movie.title}</h4>
+                            <h4 className="font-bold text-wrap text-sm text-slate-100" title={movie.title}>{movie.title}</h4>
                             <a 
                               href={`https://www.themoviedb.org/movie/${movie.tmdbId}`} 
                               target="_blank" 
@@ -478,7 +478,7 @@ export default function AdminRepository({ movies, tags, activeMoviesCount, toggl
 
                       <div className="flex flex-col gap-2 pt-2 border-t border-slate-700/50">
                         {movie.addedBy && (
-                          <p className="-mb-1 text-[10px] text-slate-500 truncate" title={`@${movie.addedBy.username}`}>
+                          <p className="-mb-1 text-[10px] text-slate-500" title={`@${movie.addedBy.username}`}>
                             Afegida per {movie.addedBy.name}
                           </p>
                         )}

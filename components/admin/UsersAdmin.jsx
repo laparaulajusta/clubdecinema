@@ -17,7 +17,7 @@ function HistorialVots({ vots }) {
             <div className="w-6 h-9 bg-slate-700 rounded flex-shrink-0" />
           )}
           <span className="text-[10px] bg-amber-500/20 text-amber-300 px-1.5 py-0.5 rounded font-medium flex-shrink-0">{vot.ronda}</span>
-          <span className="text-xs text-slate-200 truncate">{vot.title}</span>
+          <span className="text-xs text-slate-200">{vot.title}</span>
           {vot.guanyadora && <span title="Va guanyar la ronda" className="ms-auto text-[11px] flex-shrink-0">🏆</span>}
         </li>
       ))}

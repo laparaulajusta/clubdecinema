@@ -70,7 +70,7 @@ const renderMovieCard = (movie, winningTmdbIds, voteMap, tags, viewMode, expande
       
       <div className="min-w-0 flex-1 flex flex-col h-full">
         <div className="flex justify-between items-start gap-1">
-          <h4 className="font-bold text-wrap text-xs text-slate-100 truncate group-hover:text-indigo-300 transition" title={movie.title}>{movie.title}</h4>
+          <h4 className="font-bold text-wrap text-xs text-slate-100 group-hover:text-indigo-300 transition" title={movie.title}>{movie.title}</h4>
           <a 
             href={`https://www.themoviedb.org/movie/${movie.tmdbId}`} 
             target="_blank" 

@@ -167,7 +167,6 @@ export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMov
         )
       )}
 
-      {/* Llistat de pel·lícules adaptat al viewMode */}
       {displayedMovies.length > 0 && isVotingReady && (
         <div className={
           viewMode === 'detailed' 
@@ -199,7 +198,7 @@ export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMov
                     )}                    
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-1">
-                        <h4 className="text-wrap text-xs font-bold text-white truncate" title={movie.title}>{movie.title}</h4>
+                        <h4 className="text-wrap text-xs font-bold text-white" title={movie.title}>{movie.title}</h4>
                         <span className="text-nowrap text-[10px] font-bold text-emerald-400">⭐ {movie.votes}</span>
                       </div>
                       <div className="flex items-start justify-between pt-1">
@@ -243,12 +242,11 @@ export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMov
             }
 
             // ==============================
-            // VISTA DETALLADA (Original millorada)
+            // VISTA DETALLADA
             // ==============================
             return (
               <div 
-                key={movie._id} 
-                // 1. Ressaltem tota la fitxa quan es fa hover al botó de votar
+                key={movie._id}
                 className={`${
                   isMyVote ? 'border-emerald-500 ring-2 ring-emerald-500/20 shadow-emerald-900/30' : 
                   movie.guanyadora ? 'border-amber-500/50' : 'border-slate-700/50'
@@ -263,12 +261,10 @@ export default function ActiveMoviesList({ activeMovies, isVotingReady, votedMov
                   <div className="flex-1 flex flex-col justify-between min-w-0">
                     <div>
                       <div className="flex justify-between items-start gap-2">
-                        {/* Etiqueta Categoria (es queda igual) */}
-                        <span className="text-[10px] md:text-xs font-bold bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 uppercase tracking-wide truncate">
+                        <span className="text-[10px] md:text-xs font-bold bg-indigo-500/20 text-indigo-300 px-2 py-1 rounded-md border border-indigo-500/30 uppercase tracking-wide">
                           {movie.tag?.name || 'Sense Categoria'}
                         </span>
                         
-                        {/* 3. Botó TMDB amb estil totalment diferenciat (gris fosc / neutre que brilla a l'hover) */}
                         <a 
                           href={`https://www.themoviedb.org/movie/${movie.tmdbId}`} 
                           target="_blank" 
