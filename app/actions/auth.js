@@ -9,18 +9,17 @@ import User from '@/models/User';
 const FORMAT_USUARI = /^[a-z0-9._-]{3,20}$/;
 const SESSIO_CADUCADA = { success: false, error: 'La sessió ha caducat. Torna a iniciar sessió.' };
 
-function validarNom(name) {
-  return !name || name.length > MAX_CARACTERS_NOM ? `Escriu el teu nom (màxim ${MAX_CARACTERS_NOM} caràcters).` : null;
-}
+const validarNom = (name) =>
+  !name || name.length > MAX_CARACTERS_NOM ? `Escriu el teu nom (màxim ${MAX_CARACTERS_NOM} caràcters).` : null;
 
-function validarContrasenya(password) {
+const validarContrasenya = (password) => {
   if (password.length < MIN_CARACTERS_CONTRASENYA) {
     return `La contrasenya ha de tenir com a mínim ${MIN_CARACTERS_CONTRASENYA} caràcters.`;
   }
   // bcrypt només té en compte els primers 72 bytes
   if (Buffer.byteLength(password) > 72) return 'La contrasenya és massa llarga.';
   return null;
-}
+};
 
 export async function iniciarSessio(formData) {
   const username = String(formData.get('username') ?? '').trim().toLowerCase();

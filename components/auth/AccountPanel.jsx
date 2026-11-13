@@ -6,7 +6,7 @@ import { MIN_CARACTERS_CONTRASENYA, MAX_CARACTERS_NOM } from '@/lib/constants';
 const inputClass = 'w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-indigo-500 shadow-inner disabled:opacity-60';
 const etiquetaClass = 'block text-xs font-bold text-slate-400 uppercase tracking-wider';
 
-function useAccioFormulari(accio, textExit) {
+const useAccioFormulari = (accio, textExit) => {
   const [missatge, setMissatge] = useState(null);
   const [pendent, startTransition] = useTransition();
 
@@ -28,7 +28,7 @@ function useAccioFormulari(accio, textExit) {
   };
 
   return { missatge, pendent, executar };
-}
+};
 
 function Missatge({ missatge }) {
   if (!missatge) return null;

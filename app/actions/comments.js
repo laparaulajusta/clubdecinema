@@ -11,22 +11,20 @@ import Movie from '@/models/Movie';
 const SENSE_SESSIO = { success: false, error: "Has d'iniciar sessió per comentar." };
 const FORA_DE_TEMPS = { success: false, error: `Només pots modificar els teus comentaris durant els ${MINUTS_EDICIO_COMENTARI} minuts posteriors a publicar-los.` };
 
-function llegirText(formData) {
-  return String(formData.get('text') ?? '').trim();
-}
+const llegirText = (formData) => String(formData.get('text') ?? '').trim();
 
-function validarText(text) {
+const validarText = (text) => {
   if (!text) return 'El comentari no pot quedar buit.';
   if (text.length > MAX_CARACTERS_COMENTARI) return `El comentari no pot superar els ${MAX_CARACTERS_COMENTARI} caràcters.`;
   return null;
-}
+};
 
 const iniciTempsEdicio = () => new Date(Date.now() - MINUTS_EDICIO_COMENTARI * 60 * 1000);
 
-function revalidarComentaris() {
+const revalidarComentaris = () => {
   revalidatePath('/');
   revalidatePath('/admin');
-}
+};
 
 export async function afegirComentari(formData) {
   const autor = await getUsuariActual();

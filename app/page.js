@@ -18,13 +18,9 @@ import CommentsHistory from '@/components/comments/CommentsHistory';
 
 const SETMANA_MS = 7 * 24 * 60 * 60 * 1000;
 
-function sumarVot(movieId) {
-  return Movie.updateOne({ _id: movieId }, { $inc: { votes: 1 } });
-}
+const sumarVot = (movieId) => Movie.updateOne({ _id: movieId }, { $inc: { votes: 1 } });
 
-function restarVot(movieId) {
-  return Movie.updateOne({ _id: movieId, votes: { $gt: 0 } }, { $inc: { votes: -1 } });
-}
+const restarVot = (movieId) => Movie.updateOne({ _id: movieId, votes: { $gt: 0 } }, { $inc: { votes: -1 } });
 
 export default async function Home() {
   await connectDB();

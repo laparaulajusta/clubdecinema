@@ -26,7 +26,7 @@ import CommentsHistory from '@/components/comments/CommentsHistory';
 
 export const dynamic = 'force-dynamic';
 
-async function assignarGuanyadora() {
+const assignarGuanyadora = async () => {
   const active = await Movie.find({ en_votacio: true }).lean();
   const maxVotes = Math.max(0, ...active.map(m => m.votes));
 
@@ -37,7 +37,7 @@ async function assignarGuanyadora() {
       { $set: { guanyadora: true } }
     );
   }
-}
+};
 
 export default async function AdminPage() {
   const usuari = await getUsuariActual();

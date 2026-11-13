@@ -1,6 +1,128 @@
 'use client';
 import { useState, useRef } from 'react';
 
+const getTagName = (movie, tags) => {
+  if (!movie.tag) return null;
+  if (typeof movie.tag === 'object' && movie.tag.name) return movie.tag.name;
+  const found = tags.find(t => t._id === movie.tag || t._id === movie.tag?._id);
+  return found ? found.name : null;
+};
+
+const renderMovieCard = (movie, winningTmdbIds, voteMap, tags, viewMode, expandedIds, toggleExpanded) => {
+  const totalVotes = voteMap[movie.tmdbId] || 0;
+  const guanyadora = winningTmdbIds.has(movie.tmdbId);
+  const anyPeli = movie.release_date ? new Date(movie.release_date).getFullYear() : (movie.year || '');
+  const tagName = getTagName(movie, tags);
+
+  // VISTA COMPACTA (Llista petita)
+  if (viewMode === 'compact') {
+    return (
+      <a 
+        key={movie._id} 
+        href={`https://www.themoviedb.org/movie/${movie.tmdbId}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="bg-slate-800 border border-slate-700 rounded-lg p-2 flex items-start justify-between gap-3 shadow-sm hover:border-indigo-500 hover:bg-slate-750 transition cursor-pointer group"
+      >
+        {movie.poster ? (
+          <img src={`https://image.tmdb.org/t/p/w92${movie.poster}`} alt={movie.title} className="w-8 h-8 object-cover rounded-lg shadow-md flex-shrink-0" />
+        ) : (
+          <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-[9px] text-slate-400 flex-shrink-0 shadow-md">Sense imatge</div>
+        )}
+        <div className="flex flex-col min-w-0 flex-1">          
+          <div className="flex items-center gap-2 overflow-hidden">
+            <h4 className="font-bold text-[11px] text-slate-100 truncate group-hover:text-indigo-300 transition" title={movie.title}>{movie.title}</h4>
+            {anyPeli && <span className="text-[10px] text-slate-400 flex-shrink-0">{anyPeli}</span>}
+            <span className="ms-auto text-[10px]">↗</span>
+          </div>
+          <div className="flex items-end gap-2 mt-0.5">
+             {tagName && <span className="text-[9px] text-slate-500 truncate">{tagName}</span>}
+             <div className="flex items-center ms-auto gap-1">
+              {movie.en_votacio && (
+                <span title="En votació" className="inline-block text-[9px] bg-emerald-500/10 text-emerald-300 px-0.5 py-0 rounded font-medium">
+                  🗳️
+                </span>
+              )}
+              {guanyadora && (
+                <span title="Guanyadora" className="inline-block text-[9px] bg-amber-500/10 text-amber-300 px-0.5 py-0 rounded font-medium">
+                  🏆
+                </span>
+              )}   
+              {totalVotes > 0 && <span title="Total de vots acumulats" className="text-[9px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 text-indigo-400 px-0.5 py-0 rounded font-medium ml-auto">⭐ {totalVotes}</span>}
+             </div>
+          </div>
+        </div>
+      </a>
+    );
+  }
+
+  // VISTA NORMAL (Pòster i fitxa completa)
+  return (
+    <div 
+      key={movie._id}
+      className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex gap-3 items-start shadow-sm "
+    >
+      {movie.poster ? (
+        <img src={`https://image.tmdb.org/t/p/w92${movie.poster}`} alt={movie.title} className="w-16 h-24 object-cover rounded-lg shadow-md flex-shrink-0" />
+      ) : (
+        <div className="w-16 h-24 bg-slate-700 rounded-lg flex items-center justify-center text-[9px] text-slate-400 flex-shrink-0 shadow-md">Sense imatge</div>
+      )}
+      
+      <div className="min-w-0 flex-1 flex flex-col h-full">
+        <div className="flex justify-between items-start gap-1">
+          <h4 className="font-bold text-wrap text-xs text-slate-100 truncate group-hover:text-indigo-300 transition" title={movie.title}>{movie.title}</h4>
+          <a 
+            href={`https://www.themoviedb.org/movie/${movie.tmdbId}`} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-[10px] font-bold text-slate-300 bg-slate-700/50 hover:bg-slate-600 hover:text-white px-2 py-1 rounded-md border border-slate-600 transition-colors flex items-center gap-1 uppercase tracking-wide flex-shrink-0"
+            title="Veure a TMDB"
+          >
+            TMDB ↗
+          </a>
+        </div>
+        {anyPeli && <p className="text-[10px] text-slate-400 mt-0.5">{anyPeli}</p>}
+        
+        <div className="flex flex-wrap items-center gap-1.5 mt-2">
+          {tagName && (
+            <span className="inline-block text-[9px] bg-slate-900/50 text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded font-medium">
+              {tagName}
+            </span>
+          )}
+          {totalVotes > 0 && (
+            <span title="Total de vots acumulats" className="inline-block text-[9px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-medium">
+              ⭐ {totalVotes} vots
+            </span>
+          )}
+          {movie.en_votacio && (
+            <span title="En votació" className="inline-block text-[9px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
+              🗳️
+            </span>
+          )}
+          {guanyadora && (
+            <span title="Guanyadora" className="inline-block text-[9px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-medium">
+              🏆
+            </span>
+          )}          
+        </div>
+
+        <span
+          type="button"
+          onClick={() => toggleExpanded(movie._id)}
+          className="w-full text-[10px] text-indigo-300 hover:text-indigo-400 cursor-pointer pt-1"
+        >
+          {expandedIds[movie._id] ? '▲ Amagar sinopsi' : '▼ Veure sinopsi'}
+        </span>
+        {expandedIds[movie._id] && (
+          <p className="text-[10px] text-slate-300 leading-relaxed pt-2 text-justify">
+            {movie.overview || "Sense sinopsi disponible per aquesta pel·lícula."}
+          </p>
+        )}   
+      </div>
+    </div>
+  );
+};
+
 export default function HomeRepository({ movies = [], tags = [], historyRecords = [] }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterTag, setFilterTag] = useState('');
@@ -179,128 +301,6 @@ export default function HomeRepository({ movies = [], tags = [], historyRecords 
         {sortedAndFilteredMovies.length === 0 && (
           <p className="col-span-full text-center text-slate-400 py-8">No s'ha trobat cap pel·lícula.</p>
         )}
-      </div>
-    </div>
-  );
-}
-
-function getTagName(movie, tags) {
-  if (!movie.tag) return null;
-  if (typeof movie.tag === 'object' && movie.tag.name) return movie.tag.name;
-  const found = tags.find(t => t._id === movie.tag || t._id === movie.tag?._id);
-  return found ? found.name : null;
-}
-
-function renderMovieCard(movie, winningTmdbIds, voteMap, tags, viewMode, expandedIds, toggleExpanded) {
-  const totalVotes = voteMap[movie.tmdbId] || 0;
-  const guanyadora = winningTmdbIds.has(movie.tmdbId);
-  const anyPeli = movie.release_date ? new Date(movie.release_date).getFullYear() : (movie.year || '');
-  const tagName = getTagName(movie, tags);
-
-  // VISTA COMPACTA (Llista petita)
-  if (viewMode === 'compact') {
-    return (
-      <a 
-        key={movie._id} 
-        href={`https://www.themoviedb.org/movie/${movie.tmdbId}`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="bg-slate-800 border border-slate-700 rounded-lg p-2 flex items-start justify-between gap-3 shadow-sm hover:border-indigo-500 hover:bg-slate-750 transition cursor-pointer group"
-      >
-        {movie.poster ? (
-          <img src={`https://image.tmdb.org/t/p/w92${movie.poster}`} alt={movie.title} className="w-8 h-8 object-cover rounded-lg shadow-md flex-shrink-0" />
-        ) : (
-          <div className="w-8 h-8 bg-slate-700 rounded-lg flex items-center justify-center text-[9px] text-slate-400 flex-shrink-0 shadow-md">Sense imatge</div>
-        )}
-        <div className="flex flex-col min-w-0 flex-1">          
-          <div className="flex items-center gap-2 overflow-hidden">
-            <h4 className="font-bold text-[11px] text-slate-100 truncate group-hover:text-indigo-300 transition" title={movie.title}>{movie.title}</h4>
-            {anyPeli && <span className="text-[10px] text-slate-400 flex-shrink-0">{anyPeli}</span>}
-            <span className="ms-auto text-[10px]">↗</span>
-          </div>
-          <div className="flex items-end gap-2 mt-0.5">
-             {tagName && <span className="text-[9px] text-slate-500 truncate">{tagName}</span>}
-             <div className="flex items-center ms-auto gap-1">
-              {movie.en_votacio && (
-                <span title="En votació" className="inline-block text-[9px] bg-emerald-500/10 text-emerald-300 px-0.5 py-0 rounded font-medium">
-                  🗳️
-                </span>
-              )}
-              {guanyadora && (
-                <span title="Guanyadora" className="inline-block text-[9px] bg-amber-500/10 text-amber-300 px-0.5 py-0 rounded font-medium">
-                  🏆
-                </span>
-              )}   
-              {totalVotes > 0 && <span title="Total de vots acumulats" className="text-[9px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 text-indigo-400 px-0.5 py-0 rounded font-medium ml-auto">⭐ {totalVotes}</span>}
-             </div>
-          </div>
-        </div>
-      </a>
-    );
-  }
-
-  // VISTA NORMAL (Pòster i fitxa completa)
-  return (
-    <div 
-      key={movie._id}
-      className="bg-slate-800 border border-slate-700 rounded-xl p-3 flex gap-3 items-start shadow-sm "
-    >
-      {movie.poster ? (
-        <img src={`https://image.tmdb.org/t/p/w92${movie.poster}`} alt={movie.title} className="w-16 h-24 object-cover rounded-lg shadow-md flex-shrink-0" />
-      ) : (
-        <div className="w-16 h-24 bg-slate-700 rounded-lg flex items-center justify-center text-[9px] text-slate-400 flex-shrink-0 shadow-md">Sense imatge</div>
-      )}
-      
-      <div className="min-w-0 flex-1 flex flex-col h-full">
-        <div className="flex justify-between items-start gap-1">
-          <h4 className="font-bold text-wrap text-xs text-slate-100 truncate group-hover:text-indigo-300 transition" title={movie.title}>{movie.title}</h4>
-          <a 
-            href={`https://www.themoviedb.org/movie/${movie.tmdbId}`} 
-            target="_blank" 
-            rel="noopener noreferrer" 
-            className="text-[10px] font-bold text-slate-300 bg-slate-700/50 hover:bg-slate-600 hover:text-white px-2 py-1 rounded-md border border-slate-600 transition-colors flex items-center gap-1 uppercase tracking-wide flex-shrink-0"
-            title="Veure a TMDB"
-          >
-            TMDB ↗
-          </a>
-        </div>
-        {anyPeli && <p className="text-[10px] text-slate-400 mt-0.5">{anyPeli}</p>}
-        
-        <div className="flex flex-wrap items-center gap-1.5 mt-2">
-          {tagName && (
-            <span className="inline-block text-[9px] bg-slate-900/50 text-slate-300 border border-slate-700 px-1.5 py-0.5 rounded font-medium">
-              {tagName}
-            </span>
-          )}
-          {totalVotes > 0 && (
-            <span title="Total de vots acumulats" className="inline-block text-[9px] bg-indigo-500/10 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-medium">
-              ⭐ {totalVotes} vots
-            </span>
-          )}
-          {movie.en_votacio && (
-            <span title="En votació" className="inline-block text-[9px] bg-emerald-500/10 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded font-medium">
-              🗳️
-            </span>
-          )}
-          {guanyadora && (
-            <span title="Guanyadora" className="inline-block text-[9px] bg-amber-500/10 text-amber-300 border border-amber-500/30 px-1.5 py-0.5 rounded font-medium">
-              🏆
-            </span>
-          )}          
-        </div>
-
-        <span
-          type="button"
-          onClick={() => toggleExpanded(movie._id)}
-          className="w-full text-[10px] text-indigo-300 hover:text-indigo-400 cursor-pointer pt-1"
-        >
-          {expandedIds[movie._id] ? '▲ Amagar sinopsi' : '▼ Veure sinopsi'}
-        </span>
-        {expandedIds[movie._id] && (
-          <p className="text-[10px] text-slate-300 leading-relaxed pt-2 text-justify">
-            {movie.overview || "Sense sinopsi disponible per aquesta pel·lícula."}
-          </p>
-        )}   
       </div>
     </div>
   );

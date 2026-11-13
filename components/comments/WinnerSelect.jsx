@@ -3,11 +3,11 @@ import { useEffect, useRef, useState } from 'react';
 
 const TOTES = '';
 
-function filtrar(opcions, filtre) {
+const filtrar = (opcions, filtre) => {
   const text = filtre.trim().toLowerCase();
   if (!text) return opcions;
   return opcions.filter(o => o.title.toLowerCase().includes(text) || (o.roundName ?? '').toLowerCase().includes(text));
-}
+};
 
 function Opcio({ opcio, seleccionada = false, seleccio = false }) {
   return (

@@ -14,7 +14,7 @@ const DURADA_DESTACAT_MS = 2500;
 const clauPeli = (fil) => fil.movie?._id ?? SENSE_PELI;
 const comptarComentaris = (fils) => fils.reduce((total, fil) => total + 1 + fil.respostes.length, 0);
 
-function agruparPerPeli(fils, guanyadores) {
+const agruparPerPeli = (fils, guanyadores) => {
   const grups = new Map(guanyadores.map(g => [g.movieId, { ...g, fils: [] }]));
   fils.forEach(fil => {
     const clau = clauPeli(fil);
@@ -30,9 +30,9 @@ function agruparPerPeli(fils, guanyadores) {
     grups.get(clau).fils.push(fil);
   });
   return [...grups.values()].filter(g => g.fils.length > 0);
-}
+};
 
-function ordenarGrups(grups, ordenacio, mitjanes) {
+const ordenarGrups = (grups, ordenacio, mitjanes) => {
   if (!ordenacio) return grups;
   const signe = ordenacio === 'mes-votades' ? -1 : 1;
   return [...grups].sort((a, b) => {
@@ -41,13 +41,13 @@ function ordenarGrups(grups, ordenacio, mitjanes) {
     if (va === undefined || vb === undefined) return (va === undefined) - (vb === undefined);
     return signe * (va - vb);
   });
-}
+};
 
-function textEliminar(comentari) {
+const textEliminar = (comentari) => {
   const respostes = comentari.respostes?.length ?? 0;
   const ambRespostes = respostes === 0 ? '' : respostes === 1 ? ' i la seva resposta' : ` i les seves ${respostes} respostes`;
   return `Segur que vols eliminar aquest comentari${ambRespostes}? Aquesta acció no es pot desfer.`;
-}
+};
 
 export default function CommentsHistory({ fils = [], guanyadores = [], usuari = null, modeAdmin = false }) {
   const [filtrePeli, setFiltrePeli] = useState('');
