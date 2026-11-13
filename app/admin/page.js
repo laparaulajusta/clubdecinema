@@ -14,15 +14,15 @@ import mongoose from 'mongoose';
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { getUsuariActual, requireAdmin } from '@/lib/auth';
-import AdminRepository from '@/components/AdminRepository';
-import LiveSearch from '@/components/LiveSearch';
-import Navbar from '@/components/Navbar';
-import VotingControls from '@/components/VotingControls';
-import VotesSummary from '@/components/VotesSummary';
-import TagManager from '@/components/TagManager';
-import ConfiguracioJoc from '@/components/ConfiguracioJoc';
-import UsersAdmin from '@/components/UsersAdmin';
-import CommentsHistory from '@/components/CommentsHistory';
+import Navbar from '@/components/layout/Navbar';
+import ConfiguracioJoc from '@/components/admin/ConfiguracioJoc';
+import UsersAdmin from '@/components/admin/UsersAdmin';
+import AdminRepository from '@/components/movies/AdminRepository';
+import LiveSearch from '@/components/movies/LiveSearch';
+import TagManager from '@/components/movies/TagManager';
+import VotingControls from '@/components/votes/VotingControls';
+import VotesSummary from '@/components/votes/VotesSummary';
+import CommentsHistory from '@/components/comments/CommentsHistory';
 
 export const dynamic = 'force-dynamic';
 

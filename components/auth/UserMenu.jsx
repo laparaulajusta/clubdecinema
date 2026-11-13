@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import AuthForm from '@/components/AuthForm';
-import AccountPanel from '@/components/AccountPanel';
+import AuthForm from '@/components/auth/AuthForm';
+import AccountPanel from '@/components/auth/AccountPanel';
 import { escoltarObrirModalLogin } from '@/lib/events';
 
 export default function UserMenu({ usuari }) {

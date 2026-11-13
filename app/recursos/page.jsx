@@ -1,4 +1,4 @@
-import Navbar from '@/components/Navbar'; // Ajusta la ruta del Navbar si cal
+import Navbar from '@/components/layout/Navbar';
 import { getUsuariActual } from '@/lib/auth';
 import { getDriveUri } from '@/lib/settings';
 

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { DURADA_MISSATGES_MS, ESPERA_CERCA_MS, IDIOMA_TMDB } from '@/lib/constants';
+import { DURADA_MISSATGES_MS, ESPERA_CERCA_MS } from '@/lib/constants';
 import { obrirModalLogin } from '@/lib/events';
 
 export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [], requereixLogin = false }) {
@@ -29,18 +29,14 @@ export default function LiveSearch({ onAddMovie, tags = [], existingMovies = [],
       }
       setLoading(true);
       try {
-        let response = await fetch(`/api/tmdb?q=${encodeURIComponent(query)}`).catch(() => null);
-        let data;
-        if (response && response.ok) {
-          data = await response.json();
-        } else {
-          const apiKey = process.env.NEXT_PUBLIC_TMDB_API_KEY; 
-          const tmdbRes = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${apiKey}&query=${encodeURIComponent(query)}&language=${IDIOMA_TMDB}`);
-          data = await tmdbRes.json();
-        }
-        setResults(data.results || data || []);
+        const response = await fetch(`/api/tmdb?q=${encodeURIComponent(query)}`);
+        if (!response.ok) throw new Error(`Error ${response.status} cercant a TMDB`);
+        const data = await response.json();
+        setResults(data.results || []);
       } catch (err) {
         console.error(err);
+        setResults([]);
+        setStatusMsg({ text: "No s'ha pogut cercar a TMDB. Torna-ho a provar.", type: 'error' });
       } finally {
         setLoading(false);
       }

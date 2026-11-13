@@ -1,7 +1,7 @@
 'use client';
 import { useState, useTransition } from 'react';
-import WinnerSelect from '@/components/WinnerSelect';
-import StarRating from '@/components/StarRating';
+import WinnerSelect from '@/components/comments/WinnerSelect';
+import StarRating from '@/components/comments/StarRating';
 import { afegirComentari } from '@/app/actions/comments';
 import { avisarComentariPublicat, obrirModalLogin } from '@/lib/events';
 import { MAX_CARACTERS_COMENTARI } from '@/lib/constants';

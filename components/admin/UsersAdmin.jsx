@@ -1,6 +1,6 @@
 'use client';
 import { useState, useTransition } from 'react';
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 
 function HistorialVots({ vots }) {
   if (vots.length === 0) {

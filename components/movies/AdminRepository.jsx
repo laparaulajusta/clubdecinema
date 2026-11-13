@@ -1,7 +1,7 @@
 'use client';
 import { useState, useTransition, useRef } from 'react';
 import { useFormStatus } from 'react-dom';
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 
 function CategoriaSelect({ tags, defaultValue }) {
   const { pending } = useFormStatus();

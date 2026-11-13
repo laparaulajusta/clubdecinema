@@ -1,8 +1,8 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import CommentThread from '@/components/CommentThread';
-import ConfirmDeleteModal from '@/components/ConfirmDeleteModal';
-import WinnerSelect from '@/components/WinnerSelect';
+import CommentThread from '@/components/comments/CommentThread';
+import WinnerSelect from '@/components/comments/WinnerSelect';
+import ConfirmDeleteModal from '@/components/ui/ConfirmDeleteModal';
 import { eliminarComentari } from '@/app/actions/comments';
 import { escoltarComentariPublicat } from '@/lib/events';
 import { COMENTARIS_PER_TANDA } from '@/lib/constants';

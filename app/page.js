@@ -9,12 +9,12 @@ import Setting from '@/models/Setting';
 import Vote from '@/models/Vote';
 import { revalidatePath } from 'next/cache';
 import mongoose from 'mongoose';
-import LiveSearch from '@/components/LiveSearch';
-import HomeRepository from '@/components/HomeRepository';
-import ActiveMoviesList from '@/components/ActiveMoviesList';
-import Navbar from '@/components/Navbar';
-import WinnerComment from '@/components/WinnerComment';
-import CommentsHistory from '@/components/CommentsHistory';
+import Navbar from '@/components/layout/Navbar';
+import LiveSearch from '@/components/movies/LiveSearch';
+import HomeRepository from '@/components/movies/HomeRepository';
+import ActiveMoviesList from '@/components/votes/ActiveMoviesList';
+import WinnerComment from '@/components/comments/WinnerComment';
+import CommentsHistory from '@/components/comments/CommentsHistory';
 
 const SETMANA_MS = 7 * 24 * 60 * 60 * 1000;
 

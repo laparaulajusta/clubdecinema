@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import UserMenu from '@/components/UserMenu';
+import UserMenu from '@/components/auth/UserMenu';
 
 export default function Navbar({ page, usuari = null, driveUri = '' }) {
   const [isOpen, setIsOpen] = useState(false);

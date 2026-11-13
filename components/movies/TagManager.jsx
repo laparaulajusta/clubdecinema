@@ -1,7 +1,7 @@
 'use client';
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
-import ConfirmDeleteModal from "@/components/ConfirmDeleteModal";
+import ConfirmDeleteModal from "@/components/ui/ConfirmDeleteModal";
 
 function AfegirCategoriaButton() {
   const { pending } = useFormStatus();
