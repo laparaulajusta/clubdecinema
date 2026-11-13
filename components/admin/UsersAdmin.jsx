@@ -51,15 +51,17 @@ function FilaUsuari({ usuari, esTu, canviarAdmin, onEliminar }) {
         <div className="min-w-0 flex-1">
           <p className="text-sm flex items-center flex-wrap gap-1.5">
             <span className="font-semibold text-slate-100">{usuari.name}</span>
-            <span className="text-xs text-slate-500">@{usuari.username}</span>
-            {esTu && <span className="text-[10px] text-slate-500">(tu)</span>}
+            <div className="flex items-center gap-2">
+              <div className="flex gap-1">
+                <span className="text-xs text-slate-500">@{usuari.username}</span>
+                {esTu && <span className="text-[10px] text-slate-500">(tu)</span>}
+              </div>
+              {usuari.isAdmin && (
+                <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-medium">Admin</span>
+              )}
+            </div>
           </p>
-          <div className="flex items-center gap-2 mt-1">
-            {usuari.isAdmin && (
-              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 px-1.5 py-0.5 rounded font-medium">Admin</span>
-            )}
-            <span className="text-[11px] text-slate-500">Alta: {usuari.alta}</span>
-          </div>
+          <span className="text-[11px] text-slate-500 mt-1">Alta: {usuari.alta}</span>
         </div>
 
         <div className="flex-1 flex flex-row-reverse flex-wrap justify-start gap-2">
