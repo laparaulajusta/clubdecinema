@@ -90,7 +90,7 @@ export default async function RecursosPage() {
 
             <div className="space-y-3">
               <h3 className="font-semibold text-slate-200">
-                Kodi & Aplicacions
+                Aplicacions
               </h3>
               <ul className="space-y-2 text-sm text-slate-300">
                 <li>
@@ -101,48 +101,58 @@ export default async function RecursosPage() {
                     className="hover:text-indigo-400 transition"
                   >
                     Elementum ↗{" "}
-                    <span className="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-400">
-                      Kodi
-                    </span>
+                  </a>
+                  <a href="https://kodi.tv/" 
+                     target="_blank" 
+                     rel="noopener noreferrer" 
+                     className="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-400 hover:text-indigo-400 transition">
+                    Kodi
                   </a>
                 </li>
                 <li>
                   <a
-                    href="https://mundokodi.com/addon-elementum-en-kodi/"
+                    href="https://torrentio.org/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-indigo-400 transition"
                   >
-                    Balandro ↗{" "}
-                    <span className="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-400">
-                      Kodi
-                    </span>
+                    Torrentio ↗{" "}
+                  </a>
+                  <a href="https://www.stremio.com/" 
+                     target="_blank" 
+                     rel="noopener noreferrer" 
+                     className="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-400 hover:text-indigo-400 transition">
+                    Stremio
                   </a>
                 </li>
                 <li>
                   <a
-                    href="https://mundokodi.com/addon-elementum-en-kodi/"
+                    href="https://xupertv.es/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-indigo-400 transition"
                   >
-                    Netfly ↗{" "}
-                    <span className="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-400">
-                      App
-                    </span>
+                    Xuper TV ↗
                   </a>
                 </li>
                 <li>
                   <a
-                    href="https://mundokodi.com/addon-elementum-en-kodi/"
+                    href="https://netflyy.app/hd1/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-indigo-400 transition"
                   >
-                    Popcorn Time ↗{" "}
-                    <span className="text-xs bg-slate-800 px-2 py-0.5 rounded text-slate-400">
-                      App
-                    </span>
+                    Netfly ↗
+                  </a>
+                </li>                
+                <li>
+                  <a
+                    href="https://popcorntime.app/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-indigo-400 transition"
+                  >
+                    Popcorn Time ↗
                   </a>
                 </li>
               </ul>
@@ -235,7 +245,7 @@ export default async function RecursosPage() {
               <ul className="space-y-2 text-sm text-slate-300">
                 <li>
                   <a
-                    href="https://www.ccma.cat/tv3/alacarta/3cat/"
+                    href="https://watch.plex.tv/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-indigo-400 transition"
@@ -245,7 +255,17 @@ export default async function RecursosPage() {
                 </li>
                 <li>
                   <a
-                    href="https://www.ccma.cat/tv3/alacarta/3cat/"
+                    href="https://pluto.tv/movies/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:text-indigo-400 transition"
+                  >
+                    Pluto TV ↗
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="https://www.3cat.cat/3cat/"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-indigo-400 transition"
